@@ -257,15 +257,24 @@ function cleanModelName(name: string): string {
         'yellow', 'orange', 'brown', 'graphite', 'midnight blue',
         'desert gold', 'titanium', 'oro', 'arena', 'pantone', 'tapestry',
         'arabesque', 'navy', 'violet', 'mint', 'cream', 'beige', 'charcoal',
-        'blaze', 'pure', 'tendril', 'polar', 'deep', 'space', 'rose'
+        'blaze', 'pure', 'tendril', 'polar', 'deep', 'space', 'rose',
+        'veil', 'ink', 'desert'
     ];
 
     model = model.replace(/\s*5g\b/gi, '');
     model = model.replace(/\s*\d+\.?\d*\"+\s*$/gi, '');
-    // Se comenta para mantener variantes de color separadas
-    // const colorRegex = new RegExp(`\\b(${colors.join('|')})\\b`, 'gi');
-    // model = model.replace(colorRegex, '');
+
+    // Re-habilitamos limpieza de colores para agrupar
+    const colorRegex = new RegExp(`\\b(${colors.join('|')})\\b`, 'gi');
+    model = model.replace(colorRegex, '');
+
+    // Limpiar codigos de producto especificos de Khan (ej: PB970015CR, KM4, MK4K para agrupar)
+    model = model.replace(/\bPB\d+[A-Z0-9]*\b/gi, ''); // Motorola part numbers
+    model = model.replace(/\b(KM4K?|MK4K?)\b/gi, ''); // Tecno part suffixes
+    model = model.replace(/\b(VEIL|INK|DESERT)\b/gi, ''); // Fallback for uppercase not caught
+
     model = model.replace(/\(\s*\)/g, '');
+    model = model.replace(/[()]/g, ''); // Remove remaining parens (e.g. from "(AZUL)")
     model = model.replace(/\s{2,}/g, ' ').trim();
 
     // Safety fallback: si limpiamos todo (ej: solo era un color), devolver original
