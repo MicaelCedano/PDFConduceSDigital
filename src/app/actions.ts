@@ -166,6 +166,8 @@ export async function extractConduceData(formData: FormData): Promise<Extraction
                 if (qty > 9000) continue;
                 // 3. Ignorar Fechas (ej: 16/02/2026 -> qty=16, rest starts with /)
                 if (rest.startsWith('/')) continue;
+                // 4. Ignorar RNC/Cedula fragmentada (ej: 131-15370-4 -> qty=131, rest starts with -)
+                if (rest.startsWith('-')) continue;
 
                 // CASO A: Cantidad + Descripción en la misma linea
                 // "40.00CELULAR..." o "1 Samsung..."
@@ -260,8 +262,9 @@ function cleanModelName(name: string): string {
 
     model = model.replace(/\s*5g\b/gi, '');
     model = model.replace(/\s*\d+\.?\d*\"+\s*$/gi, '');
-    const colorRegex = new RegExp(`\\b(${colors.join('|')})\\b`, 'gi');
-    model = model.replace(colorRegex, '');
+    // Se comenta para mantener variantes de color separadas
+    // const colorRegex = new RegExp(`\\b(${colors.join('|')})\\b`, 'gi');
+    // model = model.replace(colorRegex, '');
     model = model.replace(/\(\s*\)/g, '');
     model = model.replace(/\s{2,}/g, ' ').trim();
 
