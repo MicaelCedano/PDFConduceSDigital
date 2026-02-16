@@ -150,10 +150,12 @@ export async function extractConduceData(formData: FormData): Promise<Extraction
 
             // Estrategia robusta: Buscar la cantidad decimal al inicio
             // Yacelltech PDF a veces une la cantidad con la descripción (ej: "1.00CELULAR...")
-            const quantityMatch = line.match(/^(\d+\.\d{2})\s*(.*)/);
+            // Regex mejorado para capturar cantidades enteras (ej: 1) o decimales (1.00, 1,00)
+            const quantityMatch = line.match(/^(\d+(?:[.,]\d{1,2})?)\s*(.*)/);
             if (quantityMatch) {
                 // console.log("Posible item encontrado:", line); // Debug line match
-                let qty = parseFloat(quantityMatch[1]);
+                let qtyStr = quantityMatch[1].replace(',', '.');
+                let qty = parseFloat(qtyStr);
                 let rest = quantityMatch[2];
 
                 // Limpiar precios del final de 'rest' si existen
@@ -221,6 +223,11 @@ function cleanModelName(name: string): string {
     model = model.replace(colorRegex, '');
     model = model.replace(/\(\s*\)/g, '');
     model = model.replace(/\s{2,}/g, ' ').trim();
+
+    // Safety fallback: si limpiamos todo (ej: solo era un color), devolver original
+    if (!model) {
+        return name.trim();
+    }
 
     return model;
 }
