@@ -482,7 +482,7 @@ export default function Home() {
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center text-primary-foreground shadow-md transition-all hover:scale-105" style={{ backgroundColor: themeColor }}>
                             <Truck size={20} />
                         </div>
-                        <span className="font-bold text-xl tracking-tight">SDigital</span>
+                        <span className="font-bold text-xl tracking-tight">PDFConduceSDigital</span>
                     </div>
                     <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="md:hidden">
                         <X size={20} />
@@ -538,7 +538,7 @@ export default function Home() {
                         <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
                             <Menu size={24} />
                         </Button>
-                        <span className="font-extrabold tracking-tight text-lg uppercase italic">SDigital</span>
+                        <span className="font-extrabold tracking-tight text-lg uppercase italic">PDFConduceSDigital</span>
                     </div>
                     <Badge variant="outline" className="px-3 py-1 bg-background">v2.2</Badge>
                 </header>
