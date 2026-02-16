@@ -144,33 +144,74 @@ export async function extractConduceData(formData: FormData): Promise<Extraction
 
         console.log(`Analizando ${lines.length} líneas para items...`);
 
+        // State for multi-line items (qty on one line, desc on next)
+        let pendingQty: number | null = null;
+
         for (let line of lines) {
             line = line.trim();
             if (!line) continue;
 
-            // Estrategia robusta: Buscar la cantidad decimal al inicio
-            // Yacelltech PDF a veces une la cantidad con la descripción (ej: "1.00CELULAR...")
-            // Regex mejorado para capturar cantidades enteras (ej: 1) o decimales (1.00, 1,00)
+            // Regex para capturar numero al inicio
             const quantityMatch = line.match(/^(\d+(?:[.,]\d{1,2})?)\s*(.*)/);
+
             if (quantityMatch) {
-                // console.log("Posible item encontrado:", line); // Debug line match
                 let qtyStr = quantityMatch[1].replace(',', '.');
                 let qty = parseFloat(qtyStr);
-                let rest = quantityMatch[2];
+                let rest = quantityMatch[2].trim();
 
-                // Limpiar precios del final de 'rest' si existen
-                const priceIndex = rest.search(/\d{1,3}(?:,\d{3})*\.\d{2}/);
-                let model = rest;
-                if (priceIndex !== -1) {
-                    model = rest.substring(0, priceIndex);
+                // FILTROS DE SEGURIDAD
+                // 1. Ignorar Cero
+                if (qty === 0) continue;
+                // 2. Ignorar IMEIs (numeros muy grandes)
+                if (qty > 9000) continue;
+                // 3. Ignorar Fechas (ej: 16/02/2026 -> qty=16, rest starts with /)
+                if (rest.startsWith('/')) continue;
+
+                // CASO A: Cantidad + Descripción en la misma linea
+                // "40.00CELULAR..." o "1 Samsung..."
+                if (rest.length > 0) {
+                    // Validar que el resto no sea basura numerica (ej: lineas de precios mal parseadas)
+                    // Ej: "4,450.000.00..." -> Qty 4450 (ya filtrado por >9000 si es alto, pero si es 1,000?)
+                    // Si el 'rest' es solo puntos, comas y numeros, es basura de precios.
+                    if (/^[\d.,]+$/.test(rest)) continue;
+
+                    let model = rest;
+                    // Limpiar precios al final si existen
+                    const priceIndex = model.search(/\d{1,3}(?:,\d{3})*\.\d{2}/);
+                    if (priceIndex !== -1) {
+                        // A veces el precio esta pegado al final
+                        model = model.substring(0, priceIndex);
+                    }
+
+                    model = cleanModelName(model);
+                    if (model) {
+                        items.push({ cant: Math.round(qty), model });
+                        pendingQty = null; // Reset pending just in case
+                    }
+                }
+                // CASO B: Solo Cantidad (pendiente descripcion en sig linea)
+                // "30.00"
+                else {
+                    pendingQty = qty;
+                }
+            }
+            else if (pendingQty !== null) {
+                let model = cleanModelName(line);
+
+                // Clean up filtering
+                if (model) {
+                    const blacklist = ['NO FACTURA', 'CONDICIONES', 'VENDEDOR', 'CLIENTE', 'FECHA', 'SUBTOTAL', 'DESCUENTO', 'ITBIS', 'TOTAL', 'PAGINA', 'RECIBIDO POR', 'REALIZADO POR'];
+                    const upper = model.toUpperCase();
+                    if (blacklist.some(b => upper.includes(b)) || upper.length < 3) {
+                        pendingQty = null;
+                        continue;
+                    }
                 }
 
-                // Limpiar modelo
-                model = cleanModelName(model);
-
-                if (model && qty > 0) {
-                    items.push({ cant: Math.round(qty), model });
+                if (model) {
+                    items.push({ cant: Math.round(pendingQty), model });
                 }
+                pendingQty = null;
             }
         }
 
