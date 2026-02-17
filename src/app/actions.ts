@@ -258,7 +258,7 @@ function cleanModelName(name: string): string {
         'desert gold', 'titanium', 'oro', 'arena', 'pantone', 'tapestry',
         'arabesque', 'navy', 'violet', 'mint', 'cream', 'beige', 'charcoal',
         'blaze', 'pure', 'tendril', 'polar', 'deep', 'space', 'rose',
-        'veil', 'ink', 'desert', 'awesome', 'light', 'dark'
+        'veil', 'ink', 'desert', 'awesome', 'light', 'dark', 'celestial'
     ];
 
     model = model.replace(/\s*5g\b/gi, '');
