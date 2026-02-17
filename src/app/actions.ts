@@ -258,11 +258,14 @@ function cleanModelName(name: string): string {
         'desert gold', 'titanium', 'oro', 'arena', 'pantone', 'tapestry',
         'arabesque', 'navy', 'violet', 'mint', 'cream', 'beige', 'charcoal',
         'blaze', 'pure', 'tendril', 'polar', 'deep', 'space', 'rose',
-        'veil', 'ink', 'desert'
+        'veil', 'ink', 'desert', 'awesome', 'light', 'dark'
     ];
 
     model = model.replace(/\s*5g\b/gi, '');
     model = model.replace(/\s*\d+\.?\d*\"+\s*$/gi, '');
+
+    // Limpiar códigos de modelo Samsung comunes (ej: SM-A566B, SM-A556E/DS)
+    model = model.replace(/\bSM-[A-Z0-9\/]+\b/gi, '');
 
     // Re-habilitamos limpieza de colores para agrupar
     const colorRegex = new RegExp(`\\b(${colors.join('|')})\\b`, 'gi');
