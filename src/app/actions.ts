@@ -262,7 +262,7 @@ function cleanModelName(name: string): string {
     ];
 
     model = model.replace(/\s*5g\b/gi, '');
-    model = model.replace(/\s*\d+\.?\d*\"+\s*$/gi, '');
+    // model = model.replace(/\s*\d+\.?\d*\"+\s*$/gi, ''); // FIX: No borrar pulgadas (TVs)
 
     // Limpiar códigos de modelo Samsung comunes (ej: SM-A566B, SM-A556E/DS)
     model = model.replace(/\bSM-[A-Z0-9\/]+\b/gi, '');
