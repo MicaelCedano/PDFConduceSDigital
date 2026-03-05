@@ -179,9 +179,26 @@ export default function Home() {
     };
 
     // --- ACTIONS (GARANTIA) ---
+    const parseGarantiaImeis = (imeis: string) => {
+        return imeis
+            .toString()
+            .replace(/[\n\r\t;]+/g, ',')
+            .split(',')
+            .map(i => i.trim())
+            .filter(i => i);
+    };
+
+    const getGarantiaCantFromImeis = (imeis: string) => {
+        const parsed = parseGarantiaImeis(imeis);
+        return parsed.length > 0 ? parsed.length : 1;
+    };
+
     const addGItem = () => {
         if (!newGItem.model.trim()) return;
-        setGItems([...gItems, newGItem]);
+        const parsedImeis = parseGarantiaImeis(newGItem.imeis);
+        const cleanedImeis = parsedImeis.join(', ');
+        const autoCant = parsedImeis.length > 0 ? parsedImeis.length : 1;
+        setGItems([...gItems, { ...newGItem, cant: autoCant, imeis: cleanedImeis }]);
         setNewGItem({ cant: 1, model: '', imeis: '' });
     };
     const removeGItem = (idx: number) => setGItems(gItems.filter((_, i) => i !== idx));
@@ -191,14 +208,16 @@ export default function Home() {
     };
     const saveEditedGItem = () => {
         if (editingGItemIndex !== null && editingGItemValue) {
+            const parsedImeis = parseGarantiaImeis(editingGItemValue.imeis);
+            const cleanedImeis = parsedImeis.join(', ');
+            const autoCant = parsedImeis.length > 0 ? parsedImeis.length : 1;
             const updated = [...gItems];
-            updated[editingGItemIndex] = editingGItemValue;
+            updated[editingGItemIndex] = { ...editingGItemValue, cant: autoCant, imeis: cleanedImeis };
             setGItems(updated);
             setEditingGItemIndex(null);
             setEditingGItemValue(null);
         }
     };
-
     // --- ACTIONS (CONDUCE MANUAL) ---
     const parseManualImeis = (imeis: string) => {
         return imeis
@@ -1245,9 +1264,9 @@ export default function Home() {
                                 <CardContent className="p-0">
                                     <div className="p-6 border-b border-border bg-muted/10 space-y-4">
                                         <div className="flex flex-col md:flex-row gap-3">
-                                            <Input suppressHydrationWarning={true} type="number" min="1" value={newGItem.cant} onChange={e => setNewGItem({ ...newGItem, cant: e.target.value })} className="w-16 h-11 text-center font-black" />
+                                            <Input suppressHydrationWarning={true} type="number" min="1" value={newGItem.cant} readOnly className="w-16 h-11 text-center font-black bg-muted/30" />
                                             <Input suppressHydrationWarning={true} type="text" value={newGItem.model} onChange={e => setNewGItem({ ...newGItem, model: e.target.value })} className="flex-1 h-11 font-medium" placeholder="Modelo del equipo..." />
-                                            <Input suppressHydrationWarning={true} type="text" value={newGItem.imeis} onChange={e => setNewGItem({ ...newGItem, imeis: e.target.value })} className="flex-[1.5] h-11 font-medium" placeholder="IMEIs / Series..." />
+                                            <Textarea suppressHydrationWarning={true} value={newGItem.imeis} onChange={e => setNewGItem({ ...newGItem, imeis: e.target.value, cant: getGarantiaCantFromImeis(e.target.value) })} className="min-h-[90px] font-medium" placeholder="Pega aquí el lote de IMEIs (pueden estar en columnas de Excel)..." />
                                         </div>
                                         <Button onClick={addGItem} className="w-full h-11 font-black uppercase tracking-widest text-xs">
                                             <Plus size={16} className="mr-2" /> Agregar Producto
@@ -1284,8 +1303,8 @@ export default function Home() {
                                                                     <Input
                                                                         type="number"
                                                                         value={editingGItemValue?.cant || 1}
-                                                                        onChange={(e) => setEditingGItemValue(prev => prev ? { ...prev, cant: e.target.value } : null)}
-                                                                        className="font-bold"
+                                                                        readOnly
+                                                                        className="font-bold bg-muted/30"
                                                                     />
                                                                 </div>
                                                                 <div className="grid gap-2">
@@ -1298,10 +1317,10 @@ export default function Home() {
                                                                 </div>
                                                                 <div className="grid gap-2">
                                                                     <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">IMEIs / Números de Serie</label>
-                                                                    <Input
+                                                                    <Textarea
                                                                         value={editingGItemValue?.imeis || ''}
-                                                                        onChange={(e) => setEditingGItemValue(prev => prev ? { ...prev, imeis: e.target.value } : null)}
-                                                                        className="font-medium"
+                                                                        onChange={(e) => setEditingGItemValue(prev => prev ? { ...prev, imeis: e.target.value, cant: getGarantiaCantFromImeis(e.target.value) } : null)}
+                                                                        className="font-medium min-h-[100px]"
                                                                     />
                                                                 </div>
                                                             </div>
@@ -1419,8 +1438,4 @@ export default function Home() {
         </div>
     );
 }
-
-
-
-
 
