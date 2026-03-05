@@ -638,50 +638,140 @@ export default function Home() {
 
     const generateGarantiaPDF = () => {
         const doc = new jsPDF();
-        const dateStr = new Date(gDate).toLocaleDateString('es-DO');
+        const date = new Date(gDate).toLocaleDateString('es-DO');
+        const darkColor = [44, 62, 80] as [number, number, number];
 
-        doc.setFontSize(24);
-        doc.setTextColor(0, 0, 128); // Navy
-        doc.text("RECIBO DE GARANTIA", 14, 25);
+        let tableFontSize = 10;
+        let tablePadding = 4;
 
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`Fecha: ${dateStr}`, 14, 35);
-        doc.text(`Tienda: ${storeName}`, 14, 42);
+        if (gItems.length > 15) { tableFontSize = 9; tablePadding = 2.5; }
+        if (gItems.length > 25) { tableFontSize = 8; tablePadding = 1.8; }
+
+        if (logo) {
+            try {
+                const imgProps = (doc as any).getImageProperties(logo);
+                const maxHeight = 20;
+                const maxWidth = 50;
+                let w = imgProps.width;
+                let h = imgProps.height;
+                const ratio = w / h;
+                if (h > maxHeight) { h = maxHeight; w = h * ratio; }
+                if (w > maxWidth) { w = maxWidth; h = w / ratio; }
+                doc.addImage(logo, 'PNG', 14, 10, w, h);
+            } catch (e) { console.error(e); }
+        }
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(22);
+        doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+        doc.text("RECIBO DE GARANTIA", 196, 20, { align: 'right' });
 
         doc.setFontSize(10);
-        doc.text("Calle Duarte, Esq Dr Ferry #54\nSucursal La Romana\nRNC: 132872975", 200, 25, { align: 'right' });
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100);
+        doc.text(`Fecha: ${date}`, 196, 27, { align: 'right' });
+        doc.text(`Tienda: ${storeName || 'N/A'}`, 196, 32, { align: 'right' });
 
-        const bodyData = gItems.map(item => {
-            let desc = item.model;
-            if (item.imeis) desc += `\nIMEIs: ${item.imeis}`;
-            return [item.cant, desc];
-        });
+        doc.setDrawColor(200);
+        doc.setLineWidth(0.5);
+        doc.line(14, 38, 196, 38);
+
+        doc.setFontSize(10);
+        doc.setTextColor(150);
+        doc.text("CLIENTE / TIENDA", 14, 45);
+
+        doc.setFontSize(12);
+        doc.setTextColor(0);
+        doc.setFont("helvetica", "bold");
+        const clientName = (storeName || 'CONSUMIDOR FINAL').toUpperCase();
+        const splitClient = doc.splitTextToSize(clientName, 180);
+        doc.text(splitClient, 14, 51);
+
+        const tableY = 51 + (splitClient.length * 6) + 5;
 
         autoTable(doc, {
-            startY: 55,
-            head: [['CANT', 'DESCRIPCIÓN']],
-            body: bodyData,
-            styles: { fontSize: 12, cellPadding: 3 },
-            headStyles: { fillColor: [200, 200, 200], textColor: 0, fontStyle: 'bold' },
-            theme: 'grid'
+            startY: tableY,
+            head: [['CANT', 'DESCRIPCION', 'VERIFICACION']],
+            body: gItems.map(item => [
+                item.cant,
+                item.imeis ? `${item.model}\nIMEIs: ${item.imeis}` : item.model,
+                ''
+            ]),
+            theme: 'striped',
+            styles: {
+                fontSize: tableFontSize,
+                cellPadding: tablePadding,
+                valign: 'middle',
+                textColor: 60,
+                lineColor: [220, 220, 220],
+                lineWidth: 0.1
+            },
+            headStyles: {
+                fillColor: darkColor,
+                textColor: 255,
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 25, fontStyle: 'bold' },
+                1: { halign: 'left' },
+                2: { halign: 'center', cellWidth: 35 }
+            },
+            didParseCell: (data) => {
+                if (data.section === 'body' && data.column.index === 2) {
+                    data.cell.text = [];
+                }
+            },
+            didDrawCell: (data) => {
+                if (data.section === 'body' && data.column.index === 2) {
+                    const dim = tableFontSize / 2.5 + 2;
+                    const x = data.cell.x + (data.cell.width - dim) / 2;
+                    const y = data.cell.y + (data.cell.height - dim) / 2;
+                    doc.setDrawColor(100);
+                    doc.rect(x, y, dim, dim, 'S');
+                }
+            }
         });
 
         // @ts-ignore
-        let finalY = doc.lastAutoTable.finalY + 20;
-        doc.setFontSize(9);
-        doc.text("La garantía quedará anulada si el equipo presenta daños físicos, humedad o mal uso.", 14, finalY);
+        let currentY = doc.lastAutoTable.finalY;
+        const totalItems = gItems.reduce((acc, curr) => acc + Number(curr.cant), 0);
 
-        finalY += 25;
-        doc.line(14, finalY, 80, finalY);
-        doc.text("Firma", 14, finalY + 5);
+        currentY += 8;
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0);
+        doc.text(`TOTAL UNIDADES: ${totalItems}`, 196, currentY, { align: 'right' });
+
+        currentY += 12;
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "bold");
+        doc.text("Nota Importante:", 14, currentY);
+        currentY += 4;
+        doc.setFont("helvetica", "normal");
+        const legalLines = [
+            'La garantia quedara anulada si el equipo presenta danos fisicos, humedad o mal uso.',
+            'Para validar la garantia, debe presentar este recibo junto al equipo.'
+        ];
+        legalLines.forEach(line => {
+            const splitLine = doc.splitTextToSize(line, 180);
+            doc.text(splitLine, 14, currentY);
+            currentY += (splitLine.length * 2.5);
+        });
+
+        currentY += 20;
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.5);
+        doc.line(30, currentY, 90, currentY);
+        doc.setFontSize(9);
+        doc.text("Despachado por", 60, currentY + 5, { align: 'center' });
+        doc.line(120, currentY, 180, currentY);
+        doc.text("RECIBIDO CONFORME", 150, currentY + 5, { align: 'center' });
 
         const pdfBlobUrl = doc.output('bloburl');
         setPdfPreview(pdfBlobUrl);
-        // doc.save(`Garantia_${storeName}.pdf`);
         addToHistory('Garantía', `${storeName} (${gItems.length} items)`);
     };
-
     if (!isMounted) return <div className="min-h-screen bg-background" />;
 
     return (
