@@ -341,24 +341,7 @@ export default function Home() {
             },
             columnStyles: {
                 0: { halign: 'center', cellWidth: 25, fontStyle: 'bold' },
-                1: { halign: 'left' },
-                2: { halign: 'center', cellWidth: 35 }
-            },
-            didParseCell: (data) => {
-                // Custom checkbox logic for "VERIFICACIÓN" column
-                if (data.section === 'body' && data.column.index === 2) {
-                    data.cell.text = []; // Clear text
-                }
-            },
-            didDrawCell: (data) => {
-                if (data.section === 'body' && data.column.index === 2) {
-                    const dim = tableFontSize / 2.5 + 2;
-                    const x = data.cell.x + (data.cell.width - dim) / 2;
-                    const y = data.cell.y + (data.cell.height - dim) / 2;
-                    doc.setDrawColor(100);
-                    doc.rect(x, y, dim, dim, 'S'); // Draw square box
-                }
-            }
+                1: { halign: 'left' },            }}
         });
 
         // --- 4. TOTAL & FOOTER (Estrategia inteligente de espaciado) ---
@@ -552,23 +535,7 @@ export default function Home() {
             },
             columnStyles: {
                 0: { halign: 'center', cellWidth: 25, fontStyle: 'bold' },
-                1: { halign: 'left' },
-                2: { halign: 'center', cellWidth: 35 }
-            },
-            didParseCell: (data) => {
-                if (data.section === 'body' && data.column.index === 2) {
-                    data.cell.text = [];
-                }
-            },
-            didDrawCell: (data) => {
-                if (data.section === 'body' && data.column.index === 2) {
-                    const dim = tableFontSize / 2.5 + 2;
-                    const x = data.cell.x + (data.cell.width - dim) / 2;
-                    const y = data.cell.y + (data.cell.height - dim) / 2;
-                    doc.setDrawColor(100);
-                    doc.rect(x, y, dim, dim, 'S');
-                }
-            }
+                1: { halign: 'left' },            }}
         });
 
         // @ts-ignore
@@ -691,11 +658,10 @@ export default function Home() {
 
         autoTable(doc, {
             startY: tableY,
-            head: [['CANT', 'DESCRIPCION', 'VERIFICACION']],
+            head: [['CANT', 'DESCRIPCION']],
             body: gItems.map(item => [
                 item.cant,
-                item.imeis ? `${item.model}\nIMEIs: ${item.imeis}` : item.model,
-                ''
+                item.imeis ? `${item.model}\nIMEIs: ${item.imeis}` : item.model
             ]),
             theme: 'striped',
             styles: {
@@ -714,22 +680,7 @@ export default function Home() {
             },
             columnStyles: {
                 0: { halign: 'center', cellWidth: 25, fontStyle: 'bold' },
-                1: { halign: 'left' },
-                2: { halign: 'center', cellWidth: 35 }
-            },
-            didParseCell: (data) => {
-                if (data.section === 'body' && data.column.index === 2) {
-                    data.cell.text = [];
-                }
-            },
-            didDrawCell: (data) => {
-                if (data.section === 'body' && data.column.index === 2) {
-                    const dim = tableFontSize / 2.5 + 2;
-                    const x = data.cell.x + (data.cell.width - dim) / 2;
-                    const y = data.cell.y + (data.cell.height - dim) / 2;
-                    doc.setDrawColor(100);
-                    doc.rect(x, y, dim, dim, 'S');
-                }
+                1: { halign: 'left' }
             }
         });
 
@@ -1421,4 +1372,6 @@ export default function Home() {
         </div>
     );
 }
+
+
 
