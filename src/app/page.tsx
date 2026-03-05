@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 
 interface HistoryEntry {
     id: number;
-    type: 'Conduce' | 'Garantía';
+    type: 'Conduce' | 'Garantía' | 'Conduce Manual';
     desc: string;
     date: string;
     time: string;
@@ -33,7 +33,7 @@ interface GarantiaItem {
 }
 
 export default function Home() {
-    const [activeTab, setActiveTab] = useState<'conduce' | 'garantia' | 'historial'>('conduce');
+    const [activeTab, setActiveTab] = useState<'conduce' | 'manual' | 'garantia' | 'historial'>('conduce');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [themeColor, setThemeColor] = useState('#3B82F6');
     const [logo, setLogo] = useState<string | null>(null);
@@ -106,6 +106,14 @@ export default function Home() {
     const [editingGItemIndex, setEditingGItemIndex] = useState<number | null>(null);
     const [editingGItemValue, setEditingGItemValue] = useState<GarantiaItem | null>(null);
 
+    // --- CONDUCE MANUAL STATE ---
+    const [mItems, setMItems] = useState<GarantiaItem[]>([]);
+    const [newMItem, setNewMItem] = useState<GarantiaItem>({ cant: 1, model: '', imeis: '' });
+    const [mDestinatario, setMDestinatario] = useState('');
+    const [mFactura, setMFactura] = useState('');
+    const [editingMItemIndex, setEditingMItemIndex] = useState<number | null>(null);
+    const [editingMItemValue, setEditingMItemValue] = useState<GarantiaItem | null>(null);
+
     // --- HISTORIAL STATE ---
     const [history, setHistory] = useState<HistoryEntry[]>([]);
 
@@ -135,7 +143,7 @@ export default function Home() {
         }
     }, [darkMode, isMounted]);
 
-    const addToHistory = (type: 'Conduce' | 'Garantía', desc: string) => {
+    const addToHistory = (type: 'Conduce' | 'Garantía' | 'Conduce Manual', desc: string) => {
         const newEntry: HistoryEntry = {
             id: Date.now(),
             type,
@@ -187,6 +195,27 @@ export default function Home() {
             setGItems(updated);
             setEditingGItemIndex(null);
             setEditingGItemValue(null);
+        }
+    };
+
+    // --- ACTIONS (CONDUCE MANUAL) ---
+    const addMItem = () => {
+        if (!newMItem.model.trim()) return;
+        setMItems([...mItems, newMItem]);
+        setNewMItem({ cant: 1, model: '', imeis: '' });
+    };
+    const removeMItem = (idx: number) => setMItems(mItems.filter((_, i) => i !== idx));
+    const startEditMItem = (idx: number) => {
+        setEditingMItemIndex(idx);
+        setEditingMItemValue({ ...mItems[idx] });
+    };
+    const saveEditedMItem = () => {
+        if (editingMItemIndex !== null && editingMItemValue) {
+            const updated = [...mItems];
+            updated[editingMItemIndex] = editingMItemValue;
+            setMItems(updated);
+            setEditingMItemIndex(null);
+            setEditingMItemValue(null);
         }
     };
 
@@ -421,6 +450,168 @@ export default function Home() {
         addToHistory('Conduce', `${destinatario} (${items.length} items)`);
     };
 
+    const generateManualConducePDF = () => {
+        const doc = new jsPDF();
+        const date = new Date().toLocaleDateString('es-DO');
+        const darkColor = [44, 62, 80] as [number, number, number];
+
+        let tableFontSize = 10;
+        let tablePadding = 4;
+
+        if (mItems.length > 15) { tableFontSize = 9; tablePadding = 2.5; }
+        if (mItems.length > 25) { tableFontSize = 8; tablePadding = 1.8; }
+
+        if (logo) {
+            try {
+                const imgProps = (doc as any).getImageProperties(logo);
+                const maxHeight = 20;
+                const maxWidth = 50;
+                let w = imgProps.width;
+                let h = imgProps.height;
+                const ratio = w / h;
+                if (h > maxHeight) { h = maxHeight; w = h * ratio; }
+                if (w > maxWidth) { w = maxWidth; h = w / ratio; }
+                doc.addImage(logo, 'PNG', 14, 10, w, h);
+            } catch (e) { console.error(e); }
+        }
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(22);
+        doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+        doc.text("CONDUCE DE ENTREGA", 196, 20, { align: 'right' });
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100);
+        doc.text(`Fecha: ${date}`, 196, 27, { align: 'right' });
+        doc.text(`Factura N°: ${mFactura || 'S/N'}`, 196, 32, { align: 'right' });
+
+        doc.setDrawColor(200);
+        doc.setLineWidth(0.5);
+        doc.line(14, 38, 196, 38);
+
+        doc.setFontSize(10);
+        doc.setTextColor(150);
+        doc.text("CLIENTE / DESTINATARIO", 14, 45);
+
+        doc.setFontSize(12);
+        doc.setTextColor(0);
+        doc.setFont("helvetica", "bold");
+        const clientName = (mDestinatario || 'Consumidor Final').toUpperCase();
+        const splitClient = doc.splitTextToSize(clientName, 180);
+        doc.text(splitClient, 14, 51);
+
+        let tableY = 51 + (splitClient.length * 6) + 5;
+
+        autoTable(doc, {
+            startY: tableY,
+            head: [['CANT', 'DESCRIPCIÓN', 'VERIFICACIÓN']],
+            body: mItems.map(it => [
+                it.cant,
+                it.imeis ? `${it.model}\nIMEIs: ${it.imeis}` : it.model,
+                ''
+            ]),
+            theme: 'striped',
+            styles: {
+                fontSize: tableFontSize,
+                cellPadding: tablePadding,
+                valign: 'middle',
+                textColor: 60,
+                lineColor: [220, 220, 220],
+                lineWidth: 0.1
+            },
+            headStyles: {
+                fillColor: darkColor,
+                textColor: 255,
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 25, fontStyle: 'bold' },
+                1: { halign: 'left' },
+                2: { halign: 'center', cellWidth: 35 }
+            },
+            didParseCell: (data) => {
+                if (data.section === 'body' && data.column.index === 2) {
+                    data.cell.text = [];
+                }
+            },
+            didDrawCell: (data) => {
+                if (data.section === 'body' && data.column.index === 2) {
+                    const dim = tableFontSize / 2.5 + 2;
+                    const x = data.cell.x + (data.cell.width - dim) / 2;
+                    const y = data.cell.y + (data.cell.height - dim) / 2;
+                    doc.setDrawColor(100);
+                    doc.rect(x, y, dim, dim, 'S');
+                }
+            }
+        });
+
+        // @ts-ignore
+        let currentY = doc.lastAutoTable.finalY;
+        const totalItems = mItems.reduce((acc, curr) => acc + Number(curr.cant), 0);
+
+        const pageHeight = 297;
+        const bottomMargin = 15;
+        const maxY = pageHeight - bottomMargin;
+        const availableSpace = maxY - currentY;
+
+        const totalHeight = 5;
+        const noteTitleHeight = 4;
+        const noteTextHeight = 12;
+        const signaturesHeight = 10;
+        const totalContentHeight = totalHeight + noteTitleHeight + noteTextHeight + signaturesHeight;
+
+        let legalFontSize = 7;
+        let legalInterline = 2.5;
+
+        let spacerAfterTable = 4, spacerAfterTotal = 6, spacerAfterNoteTitle = 3, spacerBeforeSignatures = 15;
+        if (availableSpace >= totalContentHeight + 40) {
+            spacerAfterTable = 8; spacerAfterTotal = 12; spacerAfterNoteTitle = 5; spacerBeforeSignatures = 30;
+        } else if (availableSpace < totalContentHeight) {
+            spacerAfterTable = 3; spacerAfterTotal = 4; spacerAfterNoteTitle = 2; spacerBeforeSignatures = 10;
+            legalFontSize = 6; legalInterline = 2.0;
+        }
+
+        currentY += spacerAfterTable;
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0);
+        doc.text(`TOTAL UNIDADES: ${totalItems}`, 196, currentY, { align: 'right' });
+
+        currentY += spacerAfterTotal;
+        doc.setFontSize(legalFontSize);
+        doc.setFont("helvetica", "bold");
+        doc.text("Nota Importante:", 14, currentY);
+        currentY += spacerAfterNoteTitle;
+        doc.setFont("helvetica", "normal");
+        const legalLines = [
+            'Al firmar como "Recibido Conforme", el cliente acepta las políticas de la empresa y certifica que ha recibido la mercancía detallada.',
+            'Cualquier reclamo debe realizarse antes de retirar la mercancía. No nos hacemos responsables tras la salida.'
+        ];
+        legalLines.forEach(line => {
+            const splitLine = doc.splitTextToSize(line, 180);
+            doc.text(splitLine, 14, currentY);
+            currentY += (splitLine.length * legalInterline);
+        });
+
+        currentY += spacerBeforeSignatures;
+        if (currentY > maxY - 10) currentY = maxY - 10;
+
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.5);
+        doc.line(30, currentY, 90, currentY);
+        doc.setFontSize(9);
+        doc.text("Despachado por", 60, currentY + 5, { align: 'center' });
+        doc.line(120, currentY, 180, currentY);
+        doc.text("RECIBIDO CONFORME", 150, currentY + 5, { align: 'center' });
+
+        const pdfBlobUrl = doc.output('bloburl');
+        setPdfPreview(pdfBlobUrl);
+        addToHistory('Conduce Manual', `${mDestinatario || 'Consumidor Final'} (${mItems.length} items)`);
+    };
+
+
     const generateGarantiaPDF = () => {
         const doc = new jsPDF();
         const dateStr = new Date(gDate).toLocaleDateString('es-DO');
@@ -492,6 +683,7 @@ export default function Home() {
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     {[
                         { id: 'conduce', icon: Truck, label: 'Generar Conduce' },
+                        { id: 'manual', icon: Laptop, label: 'Conduce Manual' },
                         { id: 'garantia', icon: ShieldCheck, label: 'Recibo Garantía' },
                         { id: 'historial', icon: History, label: 'Historial' }
                     ].map((tab) => (
@@ -638,7 +830,7 @@ export default function Home() {
                                     <Card className="min-h-[450px] flex flex-col overflow-hidden">
                                         <CardHeader className="flex flex-row items-center justify-between pb-3 bg-muted/30">
                                             <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Items del Conduce</CardTitle>
-                                            <Badge variant="secondary" className="font-bold text-[10px]">{items.length} PRODUCTOS</Badge>
+                                            <Badge variant="secondary" className="font-bold text-[10px]">{`${items.length} PRODUCTOS`}</Badge>
                                         </CardHeader>
 
                                         {/* ADD ITEM ROW */}
@@ -753,6 +945,156 @@ export default function Home() {
                                                         />
                                                     ))}
                                                 </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                    }
+
+                    {/* --- MODULE: CONDUCE MANUAL --- */}
+                    {activeTab === 'manual' && (
+                        <div className="max-w-5xl mx-auto animate-fadeIn pb-20">
+                            <header className="mb-8">
+                                <h1 className="text-3xl font-bold tracking-tight">Conduce Manual</h1>
+                                <p className="text-muted-foreground">Genera un conduce ingresando los IMEIs manualmente.</p>
+                            </header>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                <div className="lg:col-span-2 space-y-8">
+                                    {/* CLIENT INFO CARD */}
+                                    <Card>
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Información del Cliente</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-muted-foreground/80 ml-1 uppercase tracking-tighter">Cliente / Destinatario</label>
+                                                <Input suppressHydrationWarning={true} type="text" value={mDestinatario} onChange={e => setMDestinatario(e.target.value)} className="h-11 font-medium bg-background" placeholder="Nombre completo" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-muted-foreground/80 ml-1 uppercase tracking-tighter">No. Factura</label>
+                                                <Input suppressHydrationWarning={true} type="text" value={mFactura} onChange={e => setMFactura(e.target.value)} className="h-11 font-medium bg-background" placeholder="B0100000000" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* ITEMS CARD */}
+                                    <Card className="min-h-[450px] flex flex-col overflow-hidden">
+                                        <CardHeader className="flex flex-row items-center justify-between pb-3 bg-muted/30">
+                                            <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Items con IMEIs</CardTitle>
+                                            <Badge variant="secondary" className="font-bold text-[10px]">{`${mItems.length} PRODUCTOS`}</Badge>
+                                        </CardHeader>
+
+                                        {/* ADD ITEM ROW */}
+                                        <div className="p-4 border-b border-border bg-muted/10 space-y-3">
+                                            <div className="flex flex-col md:flex-row gap-3">
+                                                <Input suppressHydrationWarning={true} type="number" min="1" value={newMItem.cant} onChange={e => setNewMItem({ ...newMItem, cant: parseInt(e.target.value) })} className="w-full md:w-16 h-10 text-center font-bold" />
+                                                <Input suppressHydrationWarning={true} type="text" value={newMItem.model} onChange={e => setNewMItem({ ...newMItem, model: e.target.value })} className="flex-1 h-10 font-medium" placeholder="Modelo o descripción..." />
+                                            </div>
+                                            <div className="flex flex-col md:flex-row gap-3">
+                                                <Input suppressHydrationWarning={true} type="text" value={newMItem.imeis} onChange={e => setNewMItem({ ...newMItem, imeis: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && addMItem()} className="flex-1 h-10 font-medium" placeholder="IMEIs (separados por coma)..." />
+                                                <Button onClick={addMItem} className="gap-2 font-bold uppercase tracking-widest text-xs h-10 shadow-md">
+                                                    <Plus size={16} /> Agregar
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex-1 overflow-y-auto">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2">
+                                                        <TableHead className="w-20 text-center font-black text-[10px] uppercase">Cant</TableHead>
+                                                        <TableHead className="font-black text-[10px] uppercase">Descripción / IMEIs</TableHead>
+                                                        <TableHead className="w-16 text-right font-black text-[10px] uppercase">Acc</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {mItems.map((item, idx) => (
+                                                        <TableRow key={idx} className="group transition-colors odd:bg-muted/5">
+                                                            <TableCell className="text-center font-bold">{item.cant}</TableCell>
+                                                            <TableCell className="font-medium">
+                                                                <div className="font-bold">{item.model}</div>
+                                                                {item.imeis && <div className="text-[10px] text-muted-foreground mt-1 bg-muted/50 p-1 rounded">IMEIs: {item.imeis}</div>}
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                <div className="flex justify-end gap-1">
+                                                                    <Dialog open={editingMItemIndex === idx} onOpenChange={(open) => !open && setEditingMItemIndex(null)}>
+                                                                        <DialogTrigger asChild>
+                                                                            <Button variant="ghost" size="icon" onClick={() => startEditMItem(idx)} className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10">
+                                                                                <Pencil size={14} />
+                                                                            </Button>
+                                                                        </DialogTrigger>
+                                                                        <DialogContent className="sm:max-w-[425px]">
+                                                                            <DialogHeader>
+                                                                                <DialogTitle className="text-xl font-black uppercase italic tracking-tighter">Editar Producto</DialogTitle>
+                                                                            </DialogHeader>
+                                                                            <div className="grid gap-4 py-4">
+                                                                                <div className="grid gap-2">
+                                                                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Cantidad</label>
+                                                                                    <Input
+                                                                                        type="number"
+                                                                                        value={editingMItemValue?.cant || 1}
+                                                                                        onChange={(e) => setEditingMItemValue(prev => prev ? { ...prev, cant: parseInt(e.target.value) } : null)}
+                                                                                        className="font-bold"
+                                                                                    />
+                                                                                </div>
+                                                                                <div className="grid gap-2">
+                                                                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Descripción / Modelo</label>
+                                                                                    <Input
+                                                                                        value={editingMItemValue?.model || ''}
+                                                                                        onChange={(e) => setEditingMItemValue(prev => prev ? { ...prev, model: e.target.value } : null)}
+                                                                                        className="font-medium"
+                                                                                    />
+                                                                                </div>
+                                                                                <div className="grid gap-2">
+                                                                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">IMEIs</label>
+                                                                                    <Input
+                                                                                        value={editingMItemValue?.imeis || ''}
+                                                                                        onChange={(e) => setEditingMItemValue(prev => prev ? { ...prev, imeis: e.target.value } : null)}
+                                                                                        className="font-medium"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                            <DialogFooter>
+                                                                                <Button onClick={saveEditedMItem} className="w-full font-black uppercase tracking-widest text-xs h-11">Guardar Cambios</Button>
+                                                                            </DialogFooter>
+                                                                        </DialogContent>
+                                                                    </Dialog>
+                                                                    <Button variant="ghost" size="icon" onClick={() => removeMItem(idx)} className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                                                                        <Trash2 size={14} />
+                                                                    </Button>
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                            {mItems.length === 0 && (
+                                                <div className="h-[250px] flex flex-col items-center justify-center text-center p-8 gap-4 grayscale opacity-40">
+                                                    <Truck size={48} className="text-muted-foreground animate-bounce" />
+                                                    <p className="text-[10px] font-black uppercase tracking-tighter italic">No hay productos en esta entrega</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Card>
+                                </div>
+
+                                <div className="space-y-8">
+                                    <Card className="sticky top-8 overflow-hidden shadow-2xl border-2">
+                                        <CardContent className="p-8 space-y-8">
+                                            <div className="space-y-4">
+                                                <Button
+                                                    size="lg"
+                                                    onClick={generateManualConducePDF}
+                                                    disabled={mItems.length === 0}
+                                                    className="w-full h-16 text-lg font-black uppercase tracking-widest shadow-xl shadow-primary/20 transition-all hover:scale-[1.03] active:scale-95 gap-3"
+                                                >
+                                                    <Download size={24} /> Generar PDF
+                                                </Button>
+                                                <p className="text-center text-[10px] text-muted-foreground font-black uppercase tracking-widest animate-pulse italic">Formato A4 Profesional</p>
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -904,9 +1246,9 @@ export default function Home() {
                                                 <div className="flex items-center gap-6">
                                                     <div className={cn(
                                                         "w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner border transition-transform group-hover:scale-110",
-                                                        entry.type === 'Conduce' ? "bg-blue-500/5 text-blue-600 border-blue-500/10" : "bg-purple-500/5 text-purple-600 border-purple-500/10"
+                                                        (entry.type === 'Conduce' || entry.type === 'Conduce Manual') ? "bg-blue-500/5 text-blue-600 border-blue-500/10" : "bg-purple-500/5 text-purple-600 border-purple-500/10"
                                                     )}>
-                                                        {entry.type === 'Conduce' ? <Truck size={24} /> : <ShieldCheck size={24} />}
+                                                        {(entry.type === 'Conduce' || entry.type === 'Conduce Manual') ? <Truck size={24} /> : <ShieldCheck size={24} />}
                                                     </div>
                                                     <div className="space-y-1">
                                                         <div className="font-black text-base tracking-tight leading-none group-hover:text-primary transition-colors">{entry.desc}</div>
@@ -916,7 +1258,7 @@ export default function Home() {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <Badge variant={entry.type === 'Conduce' ? "default" : "secondary"} className="font-black text-[10px] px-3 py-1 uppercase tracking-widest shadow-sm">
+                                                <Badge variant={(entry.type === 'Conduce' || entry.type === 'Conduce Manual') ? "default" : "secondary"} className="font-black text-[10px] px-3 py-1 uppercase tracking-widest shadow-sm">
                                                     {entry.type}
                                                 </Badge>
                                             </div>
