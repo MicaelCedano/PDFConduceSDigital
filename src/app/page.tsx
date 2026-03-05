@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 interface HistoryEntry {
@@ -201,7 +202,17 @@ export default function Home() {
     // --- ACTIONS (CONDUCE MANUAL) ---
     const addMItem = () => {
         if (!newMItem.model.trim()) return;
-        setMItems([...mItems, newMItem]);
+
+        // Limpiar IMEIs: reemplazar saltos de línea y tabulaciones por comas
+        const cleanedImeis = newMItem.imeis
+            .toString()
+            .replace(/[\n\r\t]+/g, ',')
+            .split(',')
+            .map(i => i.trim())
+            .filter(i => i)
+            .join(', ');
+
+        setMItems([...mItems, { ...newMItem, imeis: cleanedImeis }]);
         setNewMItem({ cant: 1, model: '', imeis: '' });
     };
     const removeMItem = (idx: number) => setMItems(mItems.filter((_, i) => i !== idx));
@@ -211,8 +222,16 @@ export default function Home() {
     };
     const saveEditedMItem = () => {
         if (editingMItemIndex !== null && editingMItemValue) {
+            const cleanedImeis = editingMItemValue.imeis
+                .toString()
+                .replace(/[\n\r\t]+/g, ',')
+                .split(',')
+                .map(i => i.trim())
+                .filter(i => i)
+                .join(', ');
+
             const updated = [...mItems];
-            updated[editingMItemIndex] = editingMItemValue;
+            updated[editingMItemIndex] = { ...editingMItemValue, imeis: cleanedImeis };
             setMItems(updated);
             setEditingMItemIndex(null);
             setEditingMItemValue(null);
@@ -994,10 +1013,10 @@ export default function Home() {
                                                 <Input suppressHydrationWarning={true} type="number" min="1" value={newMItem.cant} onChange={e => setNewMItem({ ...newMItem, cant: parseInt(e.target.value) })} className="w-full md:w-16 h-10 text-center font-bold" />
                                                 <Input suppressHydrationWarning={true} type="text" value={newMItem.model} onChange={e => setNewMItem({ ...newMItem, model: e.target.value })} className="flex-1 h-10 font-medium" placeholder="Modelo o descripción..." />
                                             </div>
-                                            <div className="flex flex-col md:flex-row gap-3">
-                                                <Input suppressHydrationWarning={true} type="text" value={newMItem.imeis} onChange={e => setNewMItem({ ...newMItem, imeis: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && addMItem()} className="flex-1 h-10 font-medium" placeholder="IMEIs (separados por coma)..." />
-                                                <Button onClick={addMItem} className="gap-2 font-bold uppercase tracking-widest text-xs h-10 shadow-md">
-                                                    <Plus size={16} /> Agregar
+                                            <div className="flex flex-col gap-3">
+                                                <Textarea suppressHydrationWarning={true} value={newMItem.imeis} onChange={e => setNewMItem({ ...newMItem, imeis: e.target.value })} className="flex-1 min-h-[80px] font-medium" placeholder="Pega aquí el lote de IMEIs (pueden estar en columnas de Excel)..." />
+                                                <Button onClick={addMItem} className="w-full h-10 gap-2 font-bold uppercase tracking-widest text-xs shadow-md">
+                                                    <Plus size={16} /> Agregar Producto
                                                 </Button>
                                             </div>
                                         </div>
@@ -1051,10 +1070,10 @@ export default function Home() {
                                                                                 </div>
                                                                                 <div className="grid gap-2">
                                                                                     <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">IMEIs</label>
-                                                                                    <Input
+                                                                                    <Textarea
                                                                                         value={editingMItemValue?.imeis || ''}
                                                                                         onChange={(e) => setEditingMItemValue(prev => prev ? { ...prev, imeis: e.target.value } : null)}
-                                                                                        className="font-medium"
+                                                                                        className="font-medium min-h-[100px]"
                                                                                     />
                                                                                 </div>
                                                                             </div>
