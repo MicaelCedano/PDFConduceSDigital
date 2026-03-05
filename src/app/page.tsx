@@ -200,19 +200,28 @@ export default function Home() {
     };
 
     // --- ACTIONS (CONDUCE MANUAL) ---
+    const parseManualImeis = (imeis: string) => {
+        return imeis
+            .toString()
+            .replace(/[\n\r\t;]+/g, ',')
+            .split(',')
+            .map(i => i.trim())
+            .filter(i => i);
+    };
+
+    const getManualCantFromImeis = (imeis: string) => {
+        const parsed = parseManualImeis(imeis);
+        return parsed.length > 0 ? parsed.length : 1;
+    };
+
     const addMItem = () => {
         if (!newMItem.model.trim()) return;
 
-        // Limpiar IMEIs: reemplazar saltos de línea y tabulaciones por comas
-        const cleanedImeis = newMItem.imeis
-            .toString()
-            .replace(/[\n\r\t]+/g, ',')
-            .split(',')
-            .map(i => i.trim())
-            .filter(i => i)
-            .join(', ');
+        const parsedImeis = parseManualImeis(newMItem.imeis);
+        const cleanedImeis = parsedImeis.join(', ');
+        const autoCant = parsedImeis.length > 0 ? parsedImeis.length : 1;
 
-        setMItems([...mItems, { ...newMItem, imeis: cleanedImeis }]);
+        setMItems([...mItems, { ...newMItem, cant: autoCant, imeis: cleanedImeis }]);
         setNewMItem({ cant: 1, model: '', imeis: '' });
     };
     const removeMItem = (idx: number) => setMItems(mItems.filter((_, i) => i !== idx));
@@ -222,16 +231,12 @@ export default function Home() {
     };
     const saveEditedMItem = () => {
         if (editingMItemIndex !== null && editingMItemValue) {
-            const cleanedImeis = editingMItemValue.imeis
-                .toString()
-                .replace(/[\n\r\t]+/g, ',')
-                .split(',')
-                .map(i => i.trim())
-                .filter(i => i)
-                .join(', ');
+            const parsedImeis = parseManualImeis(editingMItemValue.imeis);
+            const cleanedImeis = parsedImeis.join(', ');
+            const autoCant = parsedImeis.length > 0 ? parsedImeis.length : 1;
 
             const updated = [...mItems];
-            updated[editingMItemIndex] = { ...editingMItemValue, imeis: cleanedImeis };
+            updated[editingMItemIndex] = { ...editingMItemValue, cant: autoCant, imeis: cleanedImeis };
             setMItems(updated);
             setEditingMItemIndex(null);
             setEditingMItemValue(null);
@@ -1010,11 +1015,11 @@ export default function Home() {
                                         {/* ADD ITEM ROW */}
                                         <div className="p-4 border-b border-border bg-muted/10 space-y-3">
                                             <div className="flex flex-col md:flex-row gap-3">
-                                                <Input suppressHydrationWarning={true} type="number" min="1" value={newMItem.cant} onChange={e => setNewMItem({ ...newMItem, cant: parseInt(e.target.value) })} className="w-full md:w-16 h-10 text-center font-bold" />
+                                                <Input suppressHydrationWarning={true} type="number" min="1" value={newMItem.cant} readOnly className="w-full md:w-16 h-10 text-center font-bold bg-muted/30" />
                                                 <Input suppressHydrationWarning={true} type="text" value={newMItem.model} onChange={e => setNewMItem({ ...newMItem, model: e.target.value })} className="flex-1 h-10 font-medium" placeholder="Modelo o descripción..." />
                                             </div>
                                             <div className="flex flex-col gap-3">
-                                                <Textarea suppressHydrationWarning={true} value={newMItem.imeis} onChange={e => setNewMItem({ ...newMItem, imeis: e.target.value })} className="flex-1 min-h-[80px] font-medium" placeholder="Pega aquí el lote de IMEIs (pueden estar en columnas de Excel)..." />
+                                                <Textarea suppressHydrationWarning={true} value={newMItem.imeis} onChange={e => setNewMItem({ ...newMItem, imeis: e.target.value, cant: getManualCantFromImeis(e.target.value) })} className="flex-1 min-h-[80px] font-medium" placeholder="Pega aquí el lote de IMEIs (pueden estar en columnas de Excel)..." />
                                                 <Button onClick={addMItem} className="w-full h-10 gap-2 font-bold uppercase tracking-widest text-xs shadow-md">
                                                     <Plus size={16} /> Agregar Producto
                                                 </Button>
@@ -1056,9 +1061,8 @@ export default function Home() {
                                                                                     <Input
                                                                                         type="number"
                                                                                         value={editingMItemValue?.cant || 1}
-                                                                                        onChange={(e) => setEditingMItemValue(prev => prev ? { ...prev, cant: parseInt(e.target.value) } : null)}
-                                                                                        className="font-bold"
-                                                                                    />
+                                                                                        readOnly
+                                                                                        className="font-bold" />
                                                                                 </div>
                                                                                 <div className="grid gap-2">
                                                                                     <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Descripción / Modelo</label>
@@ -1072,7 +1076,7 @@ export default function Home() {
                                                                                     <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">IMEIs</label>
                                                                                     <Textarea
                                                                                         value={editingMItemValue?.imeis || ''}
-                                                                                        onChange={(e) => setEditingMItemValue(prev => prev ? { ...prev, imeis: e.target.value } : null)}
+                                                                                        onChange={(e) => setEditingMItemValue(prev => prev ? { ...prev, imeis: e.target.value, cant: getManualCantFromImeis(e.target.value) } : null)}
                                                                                         className="font-medium min-h-[100px]"
                                                                                     />
                                                                                 </div>
@@ -1327,3 +1331,4 @@ export default function Home() {
         </div>
     );
 }
+
