@@ -144,14 +144,16 @@ export async function extractConduceData(formData: FormData): Promise<Extraction
 
         console.log(`Analizando ${lines.length} líneas para items...`);
 
-        // State for multi-line items (qty on one line, desc on next)
+        const BLACKLIST = ['NO FACTURA', 'CONDICIONES', 'VENDEDOR', 'CLIENTE', 'FECHA', 'SUBTOTAL', 'DESCUENTO', 'ITBIS', 'TOTAL', 'PAGINA', 'RECIBIDO POR', 'REALIZADO POR'];
+        const isBlacklisted = (s: string) => BLACKLIST.some(b => s.toUpperCase().includes(b));
+
         let pendingQty: number | null = null;
+        let lastItemIndex: number | null = null; // para continuar descripción en múltiples líneas
 
         for (let line of lines) {
             line = line.trim();
             if (!line) continue;
 
-            // Regex para capturar numero al inicio
             const quantityMatch = line.match(/^(\d+(?:[.,]\d{1,2})?)\s*(.*)/);
 
             if (quantityMatch) {
@@ -159,61 +161,63 @@ export async function extractConduceData(formData: FormData): Promise<Extraction
                 let qty = parseFloat(qtyStr);
                 let rest = quantityMatch[2].trim();
 
-                // FILTROS DE SEGURIDAD
-                // 1. Ignorar Cero
                 if (qty === 0) continue;
-                // 2. Ignorar IMEIs (numeros muy grandes)
                 if (qty > 9000) continue;
-                // 3. Ignorar Fechas (ej: 16/02/2026 -> qty=16, rest starts with /)
                 if (rest.startsWith('/')) continue;
-                // 4. Ignorar RNC/Cedula fragmentada (ej: 131-15370-4 -> qty=131, rest starts with -)
                 if (rest.startsWith('-')) continue;
 
-                // CASO A: Cantidad + Descripción en la misma linea
-                // "40.00CELULAR..." o "1 Samsung..."
                 if (rest.length > 0) {
-                    // Validar que el resto no sea basura numerica (ej: lineas de precios mal parseadas)
-                    // Ej: "4,450.000.00..." -> Qty 4450 (ya filtrado por >9000 si es alto, pero si es 1,000?)
-                    // Si el 'rest' es solo puntos, comas y numeros, es basura de precios.
                     if (/^[\d.,]+$/.test(rest)) continue;
 
+                    // Línea como "10W", "33W", "20W": es especificación de vatios, no un item nuevo
+                    if (/^[A-Za-z]{1,4}$/.test(rest)) {
+                        if (lastItemIndex !== null) {
+                            // Añadir la especificación (ej: "10W") al último item
+                            items[lastItemIndex].model = (items[lastItemIndex].model + ' ' + qty + rest).trim();
+                        }
+                        continue;
+                    }
+
                     let model = rest;
-                    // Limpiar precios al final si existen
                     const priceIndex = model.search(/\d{1,3}(?:,\d{3})*\.\d{2}/);
                     if (priceIndex !== -1) {
-                        // A veces el precio esta pegado al final
                         model = model.substring(0, priceIndex);
                     }
 
                     model = cleanModelName(model);
                     if (model) {
                         items.push({ cant: Math.round(qty), model });
-                        pendingQty = null; // Reset pending just in case
+                        lastItemIndex = items.length - 1;
+                        pendingQty = null;
                     }
-                }
-                // CASO B: Solo Cantidad (pendiente descripcion en sig linea)
-                // "30.00"
-                else {
+                } else {
                     pendingQty = qty;
+                    lastItemIndex = null;
                 }
             }
             else if (pendingQty !== null) {
                 let model = cleanModelName(line);
 
-                // Clean up filtering
                 if (model) {
-                    const blacklist = ['NO FACTURA', 'CONDICIONES', 'VENDEDOR', 'CLIENTE', 'FECHA', 'SUBTOTAL', 'DESCUENTO', 'ITBIS', 'TOTAL', 'PAGINA', 'RECIBIDO POR', 'REALIZADO POR'];
-                    const upper = model.toUpperCase();
-                    if (blacklist.some(b => upper.includes(b)) || upper.length < 3) {
+                    if (isBlacklisted(model) || model.length < 3) {
                         pendingQty = null;
+                        lastItemIndex = null;
                         continue;
                     }
                 }
 
                 if (model) {
                     items.push({ cant: Math.round(pendingQty), model });
+                    lastItemIndex = items.length - 1;
                 }
                 pendingQty = null;
+            }
+            else if (lastItemIndex !== null) {
+                // Continuación de descripción en línea siguiente (ej: "PRO", "TPC 33W")
+                if (/^[\d.,]+$/.test(line)) { lastItemIndex = null; continue; }
+                if (isBlacklisted(line)) { lastItemIndex = null; continue; }
+                if (line.length < 2) continue;
+                items[lastItemIndex].model = (items[lastItemIndex].model + ' ' + line).trim();
             }
         }
 
