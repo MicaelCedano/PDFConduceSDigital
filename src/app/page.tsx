@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
-import { Truck, ShieldCheck, History, Menu, X, Plus, Trash2, Pencil, Download, Moon, Sun, Monitor, Laptop } from 'lucide-react';
+import { Truck, ShieldCheck, History, Menu, X, Plus, Trash2, Pencil, Download, Moon, Sun, Monitor, Laptop, Zap } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './globals.css';
@@ -34,7 +34,7 @@ interface GarantiaItem {
 }
 
 export default function Home() {
-    const [activeTab, setActiveTab] = useState<'conduce' | 'manual' | 'garantia' | 'historial'>('conduce');
+    const [activeTab, setActiveTab] = useState<'conduce' | 'manual' | 'garantia' | 'historial' | 'clasificador'>('conduce');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [themeColor, setThemeColor] = useState('#3B82F6');
     const [logo, setLogo] = useState<string | null>(null);
@@ -117,6 +117,97 @@ export default function Home() {
 
     // --- HISTORIAL STATE ---
     const [history, setHistory] = useState<HistoryEntry[]>([]);
+
+    // --- CLASIFICADOR STATE ---
+    interface ClasificadorItem { qty: number; desc: string; }
+    interface ClasificadorResult {
+        usb: ClasificadorItem[];
+        usc: ClasificadorItem[];
+        cc: ClasificadorItem[];
+        filename: string;
+    }
+    const [clasifLoading, setClasifLoading] = useState(false);
+    const [clasifResult, setClasifResult] = useState<ClasificadorResult | null>(null);
+    const [clasifError, setClasifError] = useState<string | null>(null);
+    const [pdfJsReady, setPdfJsReady] = useState(false);
+
+    // Load pdf.js from CDN for the classifier
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const existing = document.getElementById('pdfjs-script');
+        if (existing) { setPdfJsReady(true); return; }
+        const script = document.createElement('script');
+        script.id = 'pdfjs-script';
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        script.onload = () => {
+            (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc =
+                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            setPdfJsReady(true);
+        };
+        document.head.appendChild(script);
+    }, []);
+
+    const classifyCharger = (desc: string): 'usb' | 'usc' | 'cc' => {
+        const d = desc.toUpperCase();
+        const numMatch = d.match(/IPHONE\s+(\d+)/);
+        if (!numMatch) return 'usb';
+        const n = parseInt(numMatch[1]);
+        const isPro = d.includes('PRO');
+        if (n <= 11) return 'usb';
+        if (n === 12 && !isPro) return 'usb';
+        if (n === 12 && isPro) return 'usc';
+        if (n === 13 || n === 14) return 'usc';
+        if (n >= 15) return 'cc';
+        return 'usb';
+    };
+
+    const extractTextFromPDFClasif = async (file: File): Promise<string> => {
+        const pdfjsLib = (window as any).pdfjsLib;
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            fullText += (content.items as any[]).map((item: any) => item.str).join(' ') + '\n';
+        }
+        return fullText;
+    };
+
+    const parseInvoiceClasif = (text: string): ClasificadorItem[] => {
+        const items: ClasificadorItem[] = [];
+        const fullReg = /(\d+)[\.,]00\s+(CELULAR\s+APPLE\s+IPHONE[\w\s\+]+?)\s+\d[\d,\.]+[\.,]00/gi;
+        let match;
+        while ((match = fullReg.exec(text)) !== null) {
+            items.push({ qty: parseInt(match[1]), desc: match[2].trim() });
+        }
+        return items;
+    };
+
+    const handleClasifFile = async (file: File) => {
+        if (!file || file.type !== 'application/pdf') return;
+        setClasifLoading(true);
+        setClasifResult(null);
+        setClasifError(null);
+        try {
+            const text = await extractTextFromPDFClasif(file);
+            const items = parseInvoiceClasif(text);
+            const usb: ClasificadorItem[] = [];
+            const usc: ClasificadorItem[] = [];
+            const cc: ClasificadorItem[] = [];
+            for (const item of items) {
+                const type = classifyCharger(item.desc);
+                if (type === 'usb') usb.push(item);
+                else if (type === 'usc') usc.push(item);
+                else cc.push(item);
+            }
+            setClasifResult({ usb, usc, cc, filename: file.name });
+        } catch (e: any) {
+            setClasifError(e.message);
+        } finally {
+            setClasifLoading(false);
+        }
+    };
 
     // Load History and Logo on Mount
     useEffect(() => {
@@ -816,7 +907,8 @@ export default function Home() {
                         { id: 'conduce', icon: Truck, label: 'Generar Conduce' },
                         { id: 'manual', icon: Laptop, label: 'Conduce Manual' },
                         { id: 'garantia', icon: ShieldCheck, label: 'Recibo Garantía' },
-                        { id: 'historial', icon: History, label: 'Historial' }
+                        { id: 'historial', icon: History, label: 'Historial' },
+                        { id: 'clasificador', icon: Zap, label: 'Clasificador Cargadores' }
                     ].map((tab) => (
                         <Button
                             key={tab.id}
@@ -1396,6 +1488,163 @@ export default function Home() {
                                     )}
                                 </CardContent>
                             </Card>
+                        </div>
+                    )}
+
+                    {/* --- MODULE: CLASIFICADOR DE CARGADORES --- */}
+                    {activeTab === 'clasificador' && (
+                        <div className="max-w-3xl mx-auto animate-fadeIn pb-20">
+                            <header className="mb-8">
+                                <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+                                    <Zap size={28} className="text-yellow-500" /> Clasificador de Cargadores
+                                </h1>
+                                <p className="text-muted-foreground">Sube una factura PDF y clasifica los iPhones por tipo de cargador automáticamente.</p>
+                            </header>
+
+                            {/* Leyenda */}
+                            <Card className="mb-6">
+                                <CardContent className="pt-4 pb-4 flex flex-wrap gap-4">
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <Badge className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">USB-Lightning</Badge>
+                                        <span className="text-muted-foreground">Del iPhone 12 para abajo</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100">TPC-Lightning</Badge>
+                                        <span className="text-muted-foreground">iPhone 12 Pro – 14 Pro Max</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">TPC-TPC</Badge>
+                                        <span className="text-muted-foreground">iPhone 15 en adelante</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Drop Zone */}
+                            <Card className="mb-6">
+                                <CardContent className="pt-6">
+                                    <div className="relative border-2 border-dashed border-input rounded-xl p-10 text-center hover:bg-muted/50 transition-all group overflow-hidden cursor-pointer">
+                                        <input
+                                            type="file"
+                                            accept="application/pdf"
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                            disabled={clasifLoading || !pdfJsReady}
+                                            onChange={e => { if (e.target.files?.[0]) handleClasifFile(e.target.files[0]); }}
+                                        />
+                                        <div className="flex flex-col items-center gap-3">
+                                            {clasifLoading ? (
+                                                <div className="flex flex-col items-center gap-3 animate-pulse">
+                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
+                                                    <span className="text-sm font-bold text-yellow-600 italic">Clasificando cargadores...</span>
+                                                </div>
+                                            ) : !pdfJsReady ? (
+                                                <span className="text-sm text-muted-foreground">Cargando motor PDF...</span>
+                                            ) : (
+                                                <>
+                                                    <div className="w-14 h-14 bg-yellow-500/10 text-yellow-500 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                        <Zap size={28} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold">Sube la factura PDF</p>
+                                                        <p className="text-xs text-muted-foreground mt-1">Click o arrastra aquí</p>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {clasifError && <p className="text-destructive text-sm mt-3">Error: {clasifError}</p>}
+                                </CardContent>
+                            </Card>
+
+                            {/* Resultados */}
+                            {clasifResult && (() => {
+                                const totalUSB = clasifResult.usb.reduce((s, i) => s + i.qty, 0);
+                                const totalUSC = clasifResult.usc.reduce((s, i) => s + i.qty, 0);
+                                const totalCC = clasifResult.cc.reduce((s, i) => s + i.qty, 0);
+                                const total = totalUSB + totalUSC + totalCC;
+                                return (
+                                    <div className="space-y-4">
+                                        <p className="text-xs text-muted-foreground">{clasifResult.filename}</p>
+
+                                        {/* Métricas */}
+                                        <div className="grid grid-cols-4 gap-3">
+                                            {[
+                                                { label: 'Total equipos', value: total, color: '' },
+                                                { label: 'USB-Lightning', value: totalUSB, color: 'text-amber-700' },
+                                                { label: 'TPC-Lightning', value: totalUSC, color: 'text-blue-700' },
+                                                { label: 'TPC-TPC', value: totalCC, color: 'text-green-700' },
+                                            ].map(m => (
+                                                <Card key={m.label}>
+                                                    <CardContent className="pt-4 pb-4 text-center">
+                                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{m.label}</p>
+                                                        <p className={cn("text-2xl font-bold", m.color)}>{m.value}</p>
+                                                    </CardContent>
+                                                </Card>
+                                            ))}
+                                        </div>
+
+                                        {total === 0 && (
+                                            <Card><CardContent className="pt-4 pb-4 text-center text-muted-foreground text-sm">No se encontraron celulares en este PDF.</CardContent></Card>
+                                        )}
+
+                                        {clasifResult.usb.length > 0 && (
+                                            <>
+                                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">USB-Lightning — del 12 para abajo</p>
+                                                <Card>
+                                                    <CardContent className="p-0">
+                                                        {clasifResult.usb.map((item, i) => (
+                                                            <div key={i} className="flex justify-between items-center px-5 py-3 border-b last:border-0 text-sm">
+                                                                <span>{item.desc}</span>
+                                                                <div className="flex items-center gap-3">
+                                                                    <Badge className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 text-[10px]">USB-Lightning</Badge>
+                                                                    <span className="font-bold">{item.qty}</span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </CardContent>
+                                                </Card>
+                                            </>
+                                        )}
+
+                                        {clasifResult.usc.length > 0 && (
+                                            <>
+                                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">TPC-Lightning — 12 Pro hasta 14 Pro Max</p>
+                                                <Card>
+                                                    <CardContent className="p-0">
+                                                        {clasifResult.usc.map((item, i) => (
+                                                            <div key={i} className="flex justify-between items-center px-5 py-3 border-b last:border-0 text-sm">
+                                                                <span>{item.desc}</span>
+                                                                <div className="flex items-center gap-3">
+                                                                    <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 text-[10px]">TPC-Lightning</Badge>
+                                                                    <span className="font-bold">{item.qty}</span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </CardContent>
+                                                </Card>
+                                            </>
+                                        )}
+
+                                        {clasifResult.cc.length > 0 && (
+                                            <>
+                                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">TPC-TPC — 15 en adelante</p>
+                                                <Card>
+                                                    <CardContent className="p-0">
+                                                        {clasifResult.cc.map((item, i) => (
+                                                            <div key={i} className="flex justify-between items-center px-5 py-3 border-b last:border-0 text-sm">
+                                                                <span>{item.desc}</span>
+                                                                <div className="flex items-center gap-3">
+                                                                    <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100 text-[10px]">TPC-TPC</Badge>
+                                                                    <span className="font-bold">{item.qty}</span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </CardContent>
+                                                </Card>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     )}
 

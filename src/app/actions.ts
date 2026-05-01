@@ -35,6 +35,22 @@ export interface ExtractionResult {
     error?: string;
 }
 
+export interface ChargerItem {
+    qty: number;
+    desc: string;
+    type: 'usb' | 'usc' | 'cc';
+}
+
+export interface ClassifyResult {
+    success: boolean;
+    data?: {
+        usb: ChargerItem[];
+        usc: ChargerItem[];
+        cc: ChargerItem[];
+    };
+    error?: string;
+}
+
 // Server Action para procesar el PDF
 export async function extractConduceData(formData: FormData): Promise<ExtractionResult> {
     try {
@@ -246,6 +262,57 @@ export async function extractConduceData(formData: FormData): Promise<Extraction
 
     } catch (error: any) {
         console.error("Error procesando PDF:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+function classifyChargerType(desc: string): 'usb' | 'usc' | 'cc' {
+    const d = desc.toUpperCase();
+    const numMatch = d.match(/IPHONE\s+(\d+)/);
+    if (!numMatch) return 'usb';
+    const n = parseInt(numMatch[1]);
+    const isPro = d.includes('PRO');
+    if (n <= 11) return 'usb';
+    if (n === 12 && !isPro) return 'usb';
+    if (n === 12 && isPro) return 'usc';
+    if (n === 13 || n === 14) return 'usc';
+    if (n >= 15) return 'cc';
+    return 'usb';
+}
+
+export async function classifyChargersFromPDF(formData: FormData): Promise<ClassifyResult> {
+    try {
+        const file = formData.get('file') as File;
+        if (!file) throw new Error('No se subió ningún archivo');
+
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const pdfParser = typeof pdf === 'function' ? pdf : pdf.default;
+        if (typeof pdfParser !== 'function') throw new Error('PDF parser no disponible');
+
+        const data = await pdfParser(buffer);
+        const text = data.text;
+
+        const rawItems: { qty: number; desc: string }[] = [];
+        const reg = /(\d+)[.,]00\s+(CELULAR\s+APPLE\s+IPHONE[\w\s\+]+?)\s+\d[\d,.]+[.,]00/gi;
+        let match;
+        while ((match = reg.exec(text)) !== null) {
+            rawItems.push({ qty: parseInt(match[1]), desc: match[2].trim() });
+        }
+
+        const usb: ChargerItem[] = [];
+        const usc: ChargerItem[] = [];
+        const cc: ChargerItem[] = [];
+
+        for (const item of rawItems) {
+            const type = classifyChargerType(item.desc);
+            const ci: ChargerItem = { ...item, type };
+            if (type === 'usb') usb.push(ci);
+            else if (type === 'usc') usc.push(ci);
+            else cc.push(ci);
+        }
+
+        return { success: true, data: { usb, usc, cc } };
+    } catch (error: any) {
         return { success: false, error: error.message };
     }
 }
