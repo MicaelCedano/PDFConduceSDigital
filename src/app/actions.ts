@@ -323,7 +323,7 @@ function cleanModelName(name: string): string {
 
     const colors = [
         'negro', 'rojo', 'verde', 'azul', 'blanco', 'gris', 'plateado',
-        'dorado', 'púrpura', 'morado', 'lavanda', 'rosa', 'rosado', 'amarillo', 'naranja', 'marrón',
+        'dorado', 'púrpura', 'purpura', 'morado', 'lavanda', 'rosa', 'rosado', 'amarillo', 'naranja', 'marrón',
         'cyan', 'magenta', 'grafito', 'sierra', 'black', 'red', 'green',
         'blue', 'white', 'gray', 'grey', 'silver', 'gold', 'purple', 'pink',
         'yellow', 'orange', 'brown', 'graphite', 'midnight blue',
