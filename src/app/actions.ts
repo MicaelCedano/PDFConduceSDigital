@@ -233,7 +233,8 @@ export async function extractConduceData(formData: FormData): Promise<Extraction
                 if (/^[\d.,]+$/.test(line)) { lastItemIndex = null; continue; }
                 if (isBlacklisted(line)) { lastItemIndex = null; continue; }
                 if (line.length < 2) continue;
-                items[lastItemIndex].model = (items[lastItemIndex].model + ' ' + line).trim();
+                const combined = items[lastItemIndex].model + ' ' + line;
+                items[lastItemIndex].model = cleanModelName(combined.trim());
             }
         }
 
@@ -324,12 +325,12 @@ function cleanModelName(name: string): string {
         'negro', 'rojo', 'verde', 'azul', 'blanco', 'gris', 'plateado',
         'dorado', 'púrpura', 'morado', 'lavanda', 'rosa', 'rosado', 'amarillo', 'naranja', 'marrón',
         'cyan', 'magenta', 'grafito', 'sierra', 'black', 'red', 'green',
-        'blue', 'white', 'gray', 'silver', 'gold', 'purple', 'pink',
+        'blue', 'white', 'gray', 'grey', 'silver', 'gold', 'purple', 'pink',
         'yellow', 'orange', 'brown', 'graphite', 'midnight blue',
         'desert gold', 'titanium', 'oro', 'arena', 'pantone', 'tapestry',
         'arabesque', 'navy', 'violet', 'mint', 'cream', 'beige', 'charcoal',
         'blaze', 'pure', 'tendril', 'polar', 'deep', 'space', 'rose',
-        'veil', 'ink', 'desert', 'awesome', 'light', 'dark', 'celestial', 'ocaso'
+        'veil', 'ink', 'desert', 'awesome', 'light', 'ligth', 'dark', 'celestial', 'ocaso'
     ];
 
     model = model.replace(/\s*5g\b/gi, '');
