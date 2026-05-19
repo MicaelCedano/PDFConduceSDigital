@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh pr create --title 'fix: agrupar Tecno 40C y Samsung A17 por colores en línea de continuación' --body ' *)",
+      "Bash(git commit -m 'fix: agregar '\\\\''purpura'\\\\'' sin tilde a lista de colores *)"
+    ]
+  }
+}

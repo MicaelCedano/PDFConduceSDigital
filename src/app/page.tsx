@@ -1355,10 +1355,10 @@ export default function Home() {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="p-6 border-b border-border bg-muted/10 space-y-4">
-                                        <div className="flex flex-col md:flex-row gap-3">
-                                            <Input suppressHydrationWarning={true} type="number" min="1" value={newGItem.cant} readOnly className="w-16 h-11 text-center font-black bg-muted/30" />
-                                            <Input suppressHydrationWarning={true} type="text" value={newGItem.model} onChange={e => setNewGItem({ ...newGItem, model: e.target.value })} className="flex-1 h-11 font-medium" placeholder="Modelo del equipo..." />
-                                            <Textarea suppressHydrationWarning={true} value={newGItem.imeis} onChange={e => setNewGItem({ ...newGItem, imeis: e.target.value, cant: getGarantiaCantFromImeis(e.target.value) })} className="min-h-[90px] font-medium" placeholder="Pega aquí el lote de IMEIs (pueden estar en columnas de Excel)..." />
+                                        <div className="grid grid-cols-1 md:grid-cols-[80px_1fr] gap-3">
+                                            <Input suppressHydrationWarning={true} type="number" min="1" value={newGItem.cant} readOnly className="h-11 text-center font-black bg-muted/30" />
+                                            <Input suppressHydrationWarning={true} type="text" value={newGItem.model} onChange={e => setNewGItem({ ...newGItem, model: e.target.value })} className="h-11 font-medium" placeholder="Modelo del equipo..." />
+                                            <Textarea suppressHydrationWarning={true} value={newGItem.imeis} onChange={e => setNewGItem({ ...newGItem, imeis: e.target.value, cant: getGarantiaCantFromImeis(e.target.value) })} className="md:col-span-2 min-h-[90px] font-medium" placeholder="Pega aquí el lote de IMEIs (pueden estar en columnas de Excel)..." />
                                         </div>
                                         <Button onClick={addGItem} className="w-full h-11 font-black uppercase tracking-widest text-xs">
                                             <Plus size={16} className="mr-2" /> Agregar Producto
