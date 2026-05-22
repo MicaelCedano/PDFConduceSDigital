@@ -428,6 +428,7 @@ export default function Home() {
 
         autoTable(doc, {
             startY: tableY,
+            margin: { bottom: 60 },
             head: [['CANT', 'DESCRIPCIÓN', 'VERIFICACIÓN']],
             body: items.map(it => [
                 it.cant,
@@ -481,7 +482,7 @@ export default function Home() {
         const maxY = pageHeight - bottomMargin; // 282mm
 
         // Calcular espacio disponible
-        const availableSpace = maxY - currentY;
+        let availableSpace = maxY - currentY;
 
         // Alturas estimadas de cada sección
         const totalHeight = 5; // Altura del texto "TOTAL UNIDADES"
@@ -490,6 +491,13 @@ export default function Home() {
         const signaturesHeight = 10; // Líneas de firma + texto
 
         const totalContentHeight = totalHeight + noteTitleHeight + noteTextHeight + signaturesHeight;
+
+        // Si no hay suficiente espacio para el total, la nota legal y las firmas, creamos una nueva página
+        if (availableSpace < totalContentHeight + 10) {
+            doc.addPage();
+            currentY = 25; // Reiniciar Y en la nueva página
+            availableSpace = maxY - currentY;
+        }
 
         // Ajuste de emergencia de fuentes si el espacio es CRÍTICO
         let legalFontSize = 7;
@@ -638,6 +646,7 @@ export default function Home() {
 
         autoTable(doc, {
             startY: tableY,
+            margin: { bottom: 60 },
             head: [['CANT', 'DESCRIPCIÓN', 'VERIFICACIÓN']],
             body: mItems.map(it => [
                 it.cant,
@@ -687,13 +696,20 @@ export default function Home() {
         const pageHeight = 297;
         const bottomMargin = 15;
         const maxY = pageHeight - bottomMargin;
-        const availableSpace = maxY - currentY;
+        let availableSpace = maxY - currentY;
 
         const totalHeight = 5;
         const noteTitleHeight = 4;
         const noteTextHeight = 12;
         const signaturesHeight = 10;
         const totalContentHeight = totalHeight + noteTitleHeight + noteTextHeight + signaturesHeight;
+
+        // Si no hay suficiente espacio para el total, la nota legal y las firmas, creamos una nueva página
+        if (availableSpace < totalContentHeight + 10) {
+            doc.addPage();
+            currentY = 25; // Reiniciar Y en la nueva página
+            availableSpace = maxY - currentY;
+        }
 
         let legalFontSize = 7;
         let legalInterline = 2.5;
@@ -800,6 +816,7 @@ export default function Home() {
 
         autoTable(doc, {
             startY: tableY,
+            margin: { bottom: 65 },
             head: [['CANT', 'DESCRIPCION']],
             body: gItems.map(item => [
                 item.cant,
@@ -845,6 +862,21 @@ export default function Home() {
         let currentY = doc.lastAutoTable.finalY;
         const totalItems = gItems.reduce((acc, curr) => acc + Number(curr.cant), 0);
 
+        const pageHeight = 297;
+        const bottomMargin = 15;
+        const maxY = pageHeight - bottomMargin;
+        let availableSpace = maxY - currentY;
+
+        // Altura estimada del bloque de garantía (Total + Nota Importante + Firmas)
+        const totalContentHeight = 65;
+
+        // Si no queda espacio suficiente, agregamos una nueva página
+        if (availableSpace < totalContentHeight) {
+            doc.addPage();
+            currentY = 25; // Reiniciar Y en la nueva página
+            availableSpace = maxY - currentY;
+        }
+
         currentY += 8;
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
@@ -868,6 +900,9 @@ export default function Home() {
         });
 
         currentY += 20;
+        if (currentY > maxY - 10) {
+            currentY = maxY - 10;
+        }
         doc.setDrawColor(0);
         doc.setLineWidth(0.5);
         doc.line(30, currentY, 90, currentY);
