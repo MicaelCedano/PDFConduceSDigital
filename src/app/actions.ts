@@ -72,6 +72,23 @@ function isImeiOrSerialLine(s: string): boolean {
     return false;
 }
 
+// Helper to check if a line is actually a spec line (e.g. RAM, storage, battery) rather than quantity
+function isSpecificationLine(line: string): boolean {
+    if (/^\d+\s*\+\s*\d+/i.test(line)) {
+        return true;
+    }
+    if (/^\d+\s*(?:MAH|AMH)\b/i.test(line)) {
+        return true;
+    }
+    if (/^\d+\s*(?:GB|RAM|ROM|TB)\b/i.test(line)) {
+        return true;
+    }
+    if (/^\d+W\b/i.test(line)) {
+        return true;
+    }
+    return false;
+}
+
 // Server Action para procesar el PDF
 export async function extractConduceData(formData: FormData): Promise<ExtractionResult> {
     try {
@@ -193,7 +210,7 @@ export async function extractConduceData(formData: FormData): Promise<Extraction
 
             const quantityMatch = line.match(/^(\d+(?:[.,]\d{1,2})?)\s*(.*)/);
 
-            if (quantityMatch) {
+            if (quantityMatch && !isSpecificationLine(line)) {
                 let qtyStr = quantityMatch[1].replace(',', '.');
                 let qty = parseFloat(qtyStr);
                 let rest = quantityMatch[2].trim();
@@ -348,7 +365,7 @@ function cleanModelName(name: string): string {
         'negro', 'rojo', 'verde', 'azul', 'blanco', 'gris', 'plateado',
         'dorado', 'púrpura', 'purpura', 'morado', 'lavanda', 'rosa', 'rosado', 'amarillo', 'naranja', 'marrón',
         'cyan', 'magenta', 'grafito', 'sierra', 'black', 'red', 'green',
-        'blue', 'white', 'gray', 'grey', 'silver', 'gold', 'purple', 'pink',
+        'blue', 'white', 'gray', 'grey', 'silver', 'silvery', 'gold', 'purple', 'pink',
         'yellow', 'orange', 'brown', 'graphite', 'midnight blue',
         'desert gold', 'titanium', 'oro', 'arena', 'pantone', 'tapestry',
         'arabesque', 'navy', 'violet', 'mint', 'cream', 'beige', 'charcoal',
