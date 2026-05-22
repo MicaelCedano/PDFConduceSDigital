@@ -368,7 +368,7 @@ function cleanModelName(name: string): string {
         'blue', 'white', 'gray', 'grey', 'silver', 'silvery', 'gold', 'purple', 'pink',
         'yellow', 'orange', 'brown', 'graphite', 'midnight blue',
         'desert gold', 'titanium', 'oro', 'arena', 'pantone', 'tapestry',
-        'arabesque', 'navy', 'violet', 'mint', 'cream', 'beige', 'charcoal',
+        'arabesque', 'navy', 'violet', 'mint', 'menta', 'cream', 'beige', 'charcoal', 'turquoise', 'turquesa', 'oceano', 'ocean', 'celeste', 'platino', 'platinum', 'lavender', 'coral',
         'blaze', 'pure', 'tendril', 'polar', 'deep', 'space', 'rose',
         'veil', 'ink', 'desert', 'awesome', 'light', 'ligth', 'dark', 'celestial', 'ocaso'
     ];
