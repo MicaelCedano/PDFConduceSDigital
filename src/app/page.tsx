@@ -378,10 +378,10 @@ export default function Home() {
         let tableFontSize = 10;
         let tablePadding = 4;
 
-        if (items.length > 15) { tableFontSize = 9; tablePadding = 2.5; }
-        if (items.length > 25) { tableFontSize = 8; tablePadding = 1.8; }
-        if (items.length > 35) { tableFontSize = 7; tablePadding = 1.2; }
-        if (items.length > 42) { tableFontSize = 6.5; tablePadding = 1.0; } // Más ajustado verticalmente
+        if (items.length > 15) { tableFontSize = 9.5; tablePadding = 3.0; }
+        if (items.length > 25) { tableFontSize = 8.8; tablePadding = 2.2; }
+        if (items.length > 35) { tableFontSize = 8.0; tablePadding = 1.6; }
+        if (items.length > 45) { tableFontSize = 7.5; tablePadding = 1.2; } // Más ajustado verticalmente
 
         // --- 1. HEADER (Logo Left, Title Right) ---
 
@@ -431,7 +431,7 @@ export default function Home() {
         doc.setFont("helvetica", "bold");
         // Multiline client name if too long
         const clientName = (destinatario || 'Consumidor Final').toUpperCase();
-        const splitClient = doc.splitTextToSize(clientName, 180);
+        const splitClient = doc.splitTextToSize(clientName, 182);
         doc.text(splitClient, 14, 51);
 
         // --- 3. PRODUCT TABLE ---
@@ -440,7 +440,7 @@ export default function Home() {
 
         autoTable(doc, {
             startY: tableY,
-            margin: { bottom: 60 },
+            margin: { left: 14, right: 14, bottom: 60 },
             head: [['CANT', 'DESCRIPCIÓN', 'VERIFICACIÓN']],
             body: items.map(it => [
                 it.cant,
@@ -611,8 +611,10 @@ export default function Home() {
         let tableFontSize = 10;
         let tablePadding = 4;
 
-        if (mItems.length > 15) { tableFontSize = 9; tablePadding = 2.5; }
-        if (mItems.length > 25) { tableFontSize = 8; tablePadding = 1.8; }
+        if (mItems.length > 15) { tableFontSize = 9.5; tablePadding = 3.0; }
+        if (mItems.length > 25) { tableFontSize = 8.8; tablePadding = 2.2; }
+        if (mItems.length > 35) { tableFontSize = 8.0; tablePadding = 1.6; }
+        if (mItems.length > 45) { tableFontSize = 7.5; tablePadding = 1.2; }
 
         if (logo) {
             try {
@@ -651,14 +653,14 @@ export default function Home() {
         doc.setTextColor(0);
         doc.setFont("helvetica", "bold");
         const clientName = (mDestinatario || 'Consumidor Final').toUpperCase();
-        const splitClient = doc.splitTextToSize(clientName, 180);
+        const splitClient = doc.splitTextToSize(clientName, 182);
         doc.text(splitClient, 14, 51);
 
         let tableY = 51 + (splitClient.length * 6) + 5;
 
         autoTable(doc, {
             startY: tableY,
-            margin: { bottom: 60 },
+            margin: { left: 14, right: 14, bottom: 60 },
             head: [['CANT', 'DESCRIPCIÓN', 'VERIFICACIÓN']],
             body: mItems.map(it => [
                 it.cant,
@@ -781,8 +783,10 @@ export default function Home() {
         let tableFontSize = 10;
         let tablePadding = 4;
 
-        if (gItems.length > 15) { tableFontSize = 9; tablePadding = 2.5; }
-        if (gItems.length > 25) { tableFontSize = 8; tablePadding = 1.8; }
+        if (gItems.length > 15) { tableFontSize = 9.5; tablePadding = 3.0; }
+        if (gItems.length > 25) { tableFontSize = 8.8; tablePadding = 2.2; }
+        if (gItems.length > 35) { tableFontSize = 8.0; tablePadding = 1.6; }
+        if (gItems.length > 45) { tableFontSize = 7.5; tablePadding = 1.2; }
 
         if (logo) {
             try {
@@ -821,14 +825,14 @@ export default function Home() {
         doc.setTextColor(0);
         doc.setFont("helvetica", "bold");
         const clientName = (storeName || 'CONSUMIDOR FINAL').toUpperCase();
-        const splitClient = doc.splitTextToSize(clientName, 180);
+        const splitClient = doc.splitTextToSize(clientName, 182);
         doc.text(splitClient, 14, 51);
 
         const tableY = 51 + (splitClient.length * 6) + 5;
 
         autoTable(doc, {
             startY: tableY,
-            margin: { bottom: 65 },
+            margin: { left: 14, right: 14, bottom: 65 },
             head: [['CANT', 'DESCRIPCION']],
             body: gItems.map(item => [
                 item.cant,
@@ -851,22 +855,7 @@ export default function Home() {
             },
             columnStyles: {
                 0: { halign: 'center', cellWidth: 25, fontStyle: 'bold' },
-                1: { halign: 'left' },
-                2: { halign: 'center', cellWidth: 35 }
-            },
-            didParseCell: (data) => {
-                if (data.section === 'body' && data.column.index === 2) {
-                    data.cell.text = [];
-                }
-            },
-            didDrawCell: (data) => {
-                if (data.section === 'body' && data.column.index === 2) {
-                    const dim = tableFontSize / 2.5 + 2;
-                    const x = data.cell.x + (data.cell.width - dim) / 2;
-                    const y = data.cell.y + (data.cell.height - dim) / 2;
-                    doc.setDrawColor(100);
-                    doc.rect(x, y, dim, dim, 'S');
-                }
+                1: { halign: 'left' }
             }
         });
 
