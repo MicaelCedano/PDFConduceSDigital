@@ -213,14 +213,26 @@ export default function Home() {
     useEffect(() => {
         setIsMounted(true);
         if (typeof window !== 'undefined') {
-            const savedHistory = localStorage.getItem('pdf_history');
-            if (savedHistory) setHistory(JSON.parse(savedHistory));
+            try {
+                const savedHistory = localStorage.getItem('pdf_history');
+                if (savedHistory) setHistory(JSON.parse(savedHistory));
+            } catch (err) {
+                console.error("Error parsing history from localStorage:", err);
+            }
 
-            const savedLogo = localStorage.getItem('company_logo');
-            if (savedLogo) setLogo(savedLogo);
+            try {
+                const savedLogo = localStorage.getItem('company_logo');
+                if (savedLogo) setLogo(savedLogo);
+            } catch (err) {
+                console.error("Error retrieving logo from localStorage:", err);
+            }
 
-            const savedTheme = localStorage.getItem('dark_mode');
-            if (savedTheme === 'true') setDarkMode(true);
+            try {
+                const savedTheme = localStorage.getItem('dark_mode');
+                if (savedTheme === 'true') setDarkMode(true);
+            } catch (err) {
+                console.error("Error retrieving theme from localStorage:", err);
+            }
         }
     }, []);
 
@@ -1134,7 +1146,7 @@ export default function Home() {
                                                                                     <Input
                                                                                         type="number"
                                                                                         value={editingItemValue?.cant || 1}
-                                                                                        onChange={(e) => setEditingItemValue(prev => prev ? { ...prev, cant: parseInt(e.target.value) } : null)}
+                                                                                        onChange={(e) => setEditingItemValue(prev => prev ? { ...prev, cant: Math.max(1, parseInt(e.target.value) || 1) } : null)}
                                                                                         className="font-bold"
                                                                                     />
                                                                                 </div>
@@ -1249,7 +1261,7 @@ export default function Home() {
                                         {/* ADD ITEM ROW */}
                                         <div className="p-4 border-b border-border bg-muted/10 space-y-3">
                                             <div className="flex flex-col md:flex-row gap-3">
-                                                <Input suppressHydrationWarning={true} type="number" min="1" value={newMItem.cant} readOnly className="w-full md:w-16 h-10 text-center font-bold bg-muted/30" />
+                                                <Input suppressHydrationWarning={true} type="number" min="1" value={newMItem.cant} onChange={e => setNewMItem({ ...newMItem, cant: Math.max(1, parseInt(e.target.value) || 1) })} className="w-full md:w-16 h-10 text-center font-bold bg-background" />
                                                 <Input suppressHydrationWarning={true} type="text" value={newMItem.model} onChange={e => setNewMItem({ ...newMItem, model: e.target.value })} className="flex-1 h-10 font-medium" placeholder="Modelo o descripción..." />
                                             </div>
                                             <div className="flex flex-col gap-3">
@@ -1295,8 +1307,8 @@ export default function Home() {
                                                                                     <Input
                                                                                         type="number"
                                                                                         value={editingMItemValue?.cant || 1}
-                                                                                        readOnly
-                                                                                        className="font-bold" />
+                                                                                        onChange={(e) => setEditingMItemValue(prev => prev ? { ...prev, cant: Math.max(1, parseInt(e.target.value) || 1) } : null)}
+                                                                                        className="font-bold bg-background" />
                                                                                 </div>
                                                                                 <div className="grid gap-2">
                                                                                     <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Descripción / Modelo</label>
@@ -1391,7 +1403,7 @@ export default function Home() {
                                 <CardContent className="p-0">
                                     <div className="p-6 border-b border-border bg-muted/10 space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-[80px_1fr] gap-3">
-                                            <Input suppressHydrationWarning={true} type="number" min="1" value={newGItem.cant} readOnly className="h-11 text-center font-black bg-muted/30" />
+                                            <Input suppressHydrationWarning={true} type="number" min="1" value={newGItem.cant} onChange={e => setNewGItem({ ...newGItem, cant: Math.max(1, parseInt(e.target.value) || 1) })} className="h-11 text-center font-black bg-background" />
                                             <Input suppressHydrationWarning={true} type="text" value={newGItem.model} onChange={e => setNewGItem({ ...newGItem, model: e.target.value })} className="h-11 font-medium" placeholder="Modelo del equipo..." />
                                             <Textarea suppressHydrationWarning={true} value={newGItem.imeis} onChange={e => setNewGItem({ ...newGItem, imeis: e.target.value, cant: getGarantiaCantFromImeis(e.target.value) })} className="md:col-span-2 min-h-[90px] font-medium" placeholder="Pega aquí el lote de IMEIs (pueden estar en columnas de Excel)..." />
                                         </div>
@@ -1430,8 +1442,8 @@ export default function Home() {
                                                                     <Input
                                                                         type="number"
                                                                         value={editingGItemValue?.cant || 1}
-                                                                        readOnly
-                                                                        className="font-bold bg-muted/30"
+                                                                        onChange={(e) => setEditingGItemValue(prev => prev ? { ...prev, cant: Math.max(1, parseInt(e.target.value) || 1) } : null)}
+                                                                        className="font-bold bg-background"
                                                                     />
                                                                 </div>
                                                                 <div className="grid gap-2">

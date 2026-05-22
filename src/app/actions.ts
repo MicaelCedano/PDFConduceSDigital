@@ -51,6 +51,27 @@ export interface ClassifyResult {
     error?: string;
 }
 
+// Helper to detect if a line represents an IMEI or serial number
+function isImeiOrSerialLine(s: string): boolean {
+    const upper = s.toUpperCase();
+    if (
+        upper.includes('IMEI') || 
+        upper.includes('SERIE') || 
+        upper.includes('SERIAL') ||
+        /\bS\/N\b/.test(upper) ||
+        /\bN\/S\b/.test(upper) ||
+        /\bSN\b/.test(upper)
+    ) {
+        return true;
+    }
+    // Clean spaces and dashes to check for 14 to 16 digit numbers (typical IMEI)
+    const cleanDigits = s.replace(/[-\s]/g, '');
+    if (/\d{14,16}/.test(cleanDigits)) {
+        return true;
+    }
+    return false;
+}
+
 // Server Action para procesar el PDF
 export async function extractConduceData(formData: FormData): Promise<ExtractionResult> {
     try {
@@ -184,6 +205,7 @@ export async function extractConduceData(formData: FormData): Promise<Extraction
 
                 if (rest.length > 0) {
                     if (/^[\d.,]+$/.test(rest)) continue;
+                    if (isImeiOrSerialLine(rest)) continue;
 
                     // Línea como "10W", "33W", "20W": es especificación de vatios, no un item nuevo
                     if (/^[A-Za-z]{1,4}$/.test(rest)) {
@@ -215,7 +237,7 @@ export async function extractConduceData(formData: FormData): Promise<Extraction
                 let model = cleanModelName(line);
 
                 if (model) {
-                    if (isBlacklisted(model) || model.length < 3) {
+                    if (isBlacklisted(model) || model.length < 3 || isImeiOrSerialLine(model)) {
                         pendingQty = null;
                         lastItemIndex = null;
                         continue;
@@ -232,6 +254,7 @@ export async function extractConduceData(formData: FormData): Promise<Extraction
                 // Continuación de descripción en línea siguiente (ej: "PRO", "TPC 33W")
                 if (/^[\d.,]+$/.test(line)) { lastItemIndex = null; continue; }
                 if (isBlacklisted(line)) { lastItemIndex = null; continue; }
+                if (isImeiOrSerialLine(line)) { lastItemIndex = null; continue; }
                 if (line.length < 2) continue;
                 const combined = items[lastItemIndex].model + ' ' + line;
                 items[lastItemIndex].model = cleanModelName(combined.trim());
