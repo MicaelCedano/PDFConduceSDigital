@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { todayRD } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 interface HistoryEntry {
@@ -103,7 +104,7 @@ export default function Home() {
     const [gItems, setGItems] = useState<GarantiaItem[]>([]);
     const [newGItem, setNewGItem] = useState<GarantiaItem>({ cant: 1, model: '', imeis: '' });
     const [storeName, setStoreName] = useState('ANGELO');
-    const [gDate, setGDate] = useState(new Date().toISOString().split('T')[0]);
+    const [gDate, setGDate] = useState(todayRD());
     const [editingGItemIndex, setEditingGItemIndex] = useState<number | null>(null);
     const [editingGItemValue, setEditingGItemValue] = useState<GarantiaItem | null>(null);
 
