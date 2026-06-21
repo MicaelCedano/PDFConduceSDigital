@@ -238,6 +238,18 @@ export default function Home() {
                 console.error("Error parsing history from localStorage:", err);
             }
 
+            // Migración: company_logo (v1) → company_logo_A (v2)
+            try {
+                const legacyLogo = localStorage.getItem('company_logo');
+                if (legacyLogo && !localStorage.getItem('company_logo_A')) {
+                    localStorage.setItem('company_logo_A', legacyLogo);
+                    setLogoA(legacyLogo);
+                    localStorage.removeItem('company_logo');
+                }
+            } catch (err) {
+                console.error("Error migrating legacy logo from localStorage:", err);
+            }
+
             try {
                 const savedLogoA = localStorage.getItem('company_logo_A');
                 if (savedLogoA) setLogoA(savedLogoA);
