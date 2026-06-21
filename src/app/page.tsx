@@ -38,7 +38,9 @@ export default function Home() {
     const [activeTab, setActiveTab] = useState<'conduce' | 'manual' | 'garantia' | 'historial' | 'clasificador'>('conduce');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [themeColor, setThemeColor] = useState('#3B82F6');
-    const [logo, setLogo] = useState<string | null>(null);
+    const [logoA, setLogoA] = useState<string | null>(null);
+    const [logoB, setLogoB] = useState<string | null>(null);
+    const [selectedLogo, setSelectedLogo] = useState<'A' | 'B'>('A');
     const [pdfPreview, setPdfPreview] = useState<string | null>(null);
     const [darkMode, setDarkMode] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
@@ -84,18 +86,33 @@ export default function Home() {
         }
     };
 
-    const handleLogoUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const handleLogoUpload = (e: ChangeEvent<HTMLInputElement>, slot: 'A' | 'B') => {
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = (ev) => {
                 if (ev.target?.result) {
                     const base64 = ev.target.result as string;
-                    setLogo(base64);
-                    localStorage.setItem('company_logo', base64);
+                    if (slot === 'A') {
+                        setLogoA(base64);
+                        localStorage.setItem('company_logo_A', base64);
+                    } else {
+                        setLogoB(base64);
+                        localStorage.setItem('company_logo_B', base64);
+                    }
                 }
             };
             reader.readAsDataURL(file);
+        }
+    };
+
+    const handleLogoRemove = (slot: 'A' | 'B') => {
+        if (slot === 'A') {
+            setLogoA(null);
+            localStorage.removeItem('company_logo_A');
+        } else {
+            setLogoB(null);
+            localStorage.removeItem('company_logo_B');
         }
     };
 
@@ -222,10 +239,24 @@ export default function Home() {
             }
 
             try {
-                const savedLogo = localStorage.getItem('company_logo');
-                if (savedLogo) setLogo(savedLogo);
+                const savedLogoA = localStorage.getItem('company_logo_A');
+                if (savedLogoA) setLogoA(savedLogoA);
             } catch (err) {
-                console.error("Error retrieving logo from localStorage:", err);
+                console.error("Error retrieving logo A from localStorage:", err);
+            }
+
+            try {
+                const savedLogoB = localStorage.getItem('company_logo_B');
+                if (savedLogoB) setLogoB(savedLogoB);
+            } catch (err) {
+                console.error("Error retrieving logo B from localStorage:", err);
+            }
+
+            try {
+                const savedSelected = localStorage.getItem('selected_logo');
+                if (savedSelected === 'A' || savedSelected === 'B') setSelectedLogo(savedSelected);
+            } catch (err) {
+                console.error("Error retrieving selected logo from localStorage:", err);
             }
 
             try {
@@ -247,6 +278,12 @@ export default function Home() {
             }
         }
     }, [darkMode, isMounted]);
+
+    useEffect(() => {
+        if (isMounted) {
+            localStorage.setItem('selected_logo', selectedLogo);
+        }
+    }, [selectedLogo, isMounted]);
 
     const addToHistory = (type: 'Conduce' | 'Garantía' | 'Conduce Manual', desc: string) => {
         const newEntry: HistoryEntry = {
@@ -387,9 +424,10 @@ export default function Home() {
         // --- 1. HEADER (Logo Left, Title Right) ---
 
         // Logo
-        if (logo) {
+        const activeLogo = selectedLogo === 'A' ? logoA : logoB;
+        if (activeLogo) {
             try {
-                const imgProps = (doc as any).getImageProperties(logo);
+                const imgProps = (doc as any).getImageProperties(activeLogo);
                 // Mantener aspect ratio, max height 20mm, max width 50mm
                 const maxHeight = 20;
                 const maxWidth = 50;
@@ -400,7 +438,7 @@ export default function Home() {
                 if (h > maxHeight) { h = maxHeight; w = h * ratio; }
                 if (w > maxWidth) { w = maxWidth; h = w / ratio; }
 
-                doc.addImage(logo, 'PNG', 14, 10, w, h);
+                doc.addImage(activeLogo, 'PNG', 14, 10, w, h);
             } catch (e) { console.error(e); }
         }
 
@@ -617,9 +655,10 @@ export default function Home() {
         if (mItems.length > 35) { tableFontSize = 8.0; tablePadding = 1.6; }
         if (mItems.length > 45) { tableFontSize = 7.5; tablePadding = 1.2; }
 
-        if (logo) {
+        const activeLogo = selectedLogo === 'A' ? logoA : logoB;
+        if (activeLogo) {
             try {
-                const imgProps = (doc as any).getImageProperties(logo);
+                const imgProps = (doc as any).getImageProperties(activeLogo);
                 const maxHeight = 20;
                 const maxWidth = 50;
                 let w = imgProps.width;
@@ -627,7 +666,7 @@ export default function Home() {
                 const ratio = w / h;
                 if (h > maxHeight) { h = maxHeight; w = h * ratio; }
                 if (w > maxWidth) { w = maxWidth; h = w / ratio; }
-                doc.addImage(logo, 'PNG', 14, 10, w, h);
+                doc.addImage(activeLogo, 'PNG', 14, 10, w, h);
             } catch (e) { console.error(e); }
         }
 
@@ -789,9 +828,10 @@ export default function Home() {
         if (gItems.length > 35) { tableFontSize = 8.0; tablePadding = 1.6; }
         if (gItems.length > 45) { tableFontSize = 7.5; tablePadding = 1.2; }
 
-        if (logo) {
+        const activeLogo = selectedLogo === 'A' ? logoA : logoB;
+        if (activeLogo) {
             try {
-                const imgProps = (doc as any).getImageProperties(logo);
+                const imgProps = (doc as any).getImageProperties(activeLogo);
                 const maxHeight = 20;
                 const maxWidth = 50;
                 let w = imgProps.width;
@@ -799,7 +839,7 @@ export default function Home() {
                 const ratio = w / h;
                 if (h > maxHeight) { h = maxHeight; w = h * ratio; }
                 if (w > maxWidth) { w = maxWidth; h = w / ratio; }
-                doc.addImage(logo, 'PNG', 14, 10, w, h);
+                doc.addImage(activeLogo, 'PNG', 14, 10, w, h);
             } catch (e) { console.error(e); }
         }
 
@@ -962,6 +1002,105 @@ export default function Home() {
                 </nav>
 
                 <div className="p-4 border-t border-border mt-auto space-y-4">
+                    {/* LOGOS SECTION */}
+                    <div className="space-y-3">
+                        <p className="text-[10px] font-black text-muted-foreground/80 uppercase tracking-tighter">Logos Empresa</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Card className={cn(
+                                "relative p-0 overflow-hidden border-2 border-dashed transition-all hover:bg-muted/50",
+                                selectedLogo === 'A' ? "border-primary bg-primary/5" : "border-border bg-muted/30"
+                            )}>
+                                <label htmlFor="logo-upload-A" className="flex flex-col items-center justify-center gap-2 p-2 cursor-pointer h-full min-h-[100px]">
+                                    <Input
+                                        id="logo-upload-A"
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => handleLogoUpload(e, 'A')}
+                                    />
+                                    {logoA ? (
+                                        <img src={logoA} alt="Logo A" className="w-full h-16 object-contain" />
+                                    ) : (
+                                        <span className="text-[10px] text-muted-foreground font-bold uppercase text-center py-4">Subir logo</span>
+                                    )}
+                                    <span className="text-[10px] font-bold text-muted-foreground">Logo A</span>
+                                    {selectedLogo === 'A' && (
+                                        <span className="absolute top-1 left-1 text-[8px] font-black bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">Activo</span>
+                                    )}
+                                    {logoA && (
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="icon"
+                                            className="absolute top-1 right-1 h-5 w-5"
+                                            onClick={(e) => { e.preventDefault(); handleLogoRemove('A'); }}
+                                        >
+                                            <X size={10} />
+                                        </Button>
+                                    )}
+                                </label>
+                            </Card>
+
+                            <Card className={cn(
+                                "relative p-0 overflow-hidden border-2 border-dashed transition-all hover:bg-muted/50",
+                                selectedLogo === 'B' ? "border-primary bg-primary/5" : "border-border bg-muted/30"
+                            )}>
+                                <label htmlFor="logo-upload-B" className="flex flex-col items-center justify-center gap-2 p-2 cursor-pointer h-full min-h-[100px]">
+                                    <Input
+                                        id="logo-upload-B"
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => handleLogoUpload(e, 'B')}
+                                    />
+                                    {logoB ? (
+                                        <img src={logoB} alt="Logo B" className="w-full h-16 object-contain" />
+                                    ) : (
+                                        <span className="text-[10px] text-muted-foreground font-bold uppercase text-center py-4">Subir logo</span>
+                                    )}
+                                    <span className="text-[10px] font-bold text-muted-foreground">Logo B</span>
+                                    {selectedLogo === 'B' && (
+                                        <span className="absolute top-1 left-1 text-[8px] font-black bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">Activo</span>
+                                    )}
+                                    {logoB && (
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="icon"
+                                            className="absolute top-1 right-1 h-5 w-5"
+                                            onClick={(e) => { e.preventDefault(); handleLogoRemove('B'); }}
+                                        >
+                                            <X size={10} />
+                                        </Button>
+                                    )}
+                                </label>
+                            </Card>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-1 bg-muted/30 p-1 rounded-xl border border-border/50">
+                            <Button
+                                type="button"
+                                variant={selectedLogo === 'A' ? "default" : "ghost"}
+                                size="sm"
+                                disabled={!logoA}
+                                onClick={() => setSelectedLogo('A')}
+                                className="h-8 text-[10px] font-bold uppercase rounded-lg"
+                            >
+                                Usar Logo A
+                            </Button>
+                            <Button
+                                type="button"
+                                variant={selectedLogo === 'B' ? "default" : "ghost"}
+                                size="sm"
+                                disabled={!logoB}
+                                onClick={() => setSelectedLogo('B')}
+                                className="h-8 text-[10px] font-bold uppercase rounded-lg"
+                            >
+                                Usar Logo B
+                            </Button>
+                        </div>
+                    </div>
+
                     <div className="bg-muted/30 p-1.5 rounded-xl border border-border/50 flex items-center justify-between">
                         <Button
                             variant={!darkMode ? "secondary" : "ghost"}
@@ -1044,27 +1183,6 @@ export default function Home() {
                                                         </>
                                                     )}
                                                 </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    {/* LOGO UPLOAD CARD */}
-                                    <Card>
-                                        <CardHeader className="pb-3">
-                                            <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Logo Empresa</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="flex flex-col md:flex-row items-center gap-6">
-                                            <div className="w-20 h-20 bg-muted border border-border rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-inner group">
-                                                {logo ? <img src={logo} alt="Logo" className="w-full h-full object-contain transition-transform group-hover:scale-110" /> : <span className="text-[10px] text-muted-foreground font-bold uppercase opacity-50">Logotipo</span>}
-                                            </div>
-                                            <div className="flex-1 w-full space-y-3">
-                                                <Input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    onChange={handleLogoUpload}
-                                                    className="cursor-pointer file:font-semibold file:text-primary"
-                                                />
-                                                <p className="text-[10px] text-muted-foreground/70 font-semibold uppercase tracking-tight">Preferiblemente formato PNG o JPG con fondo blanco.</p>
                                             </div>
                                         </CardContent>
                                     </Card>
